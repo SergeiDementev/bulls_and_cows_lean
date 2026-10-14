@@ -1,0 +1,6 @@
+pnpm-lock.yaml
+coverage/
+reports/
+dist/
+# Documentation tables are aligned by hand
+*.md
