@@ -6,3 +6,6 @@ test-results/
 playwright-report/
 .env
 *.log
+
+# Load test output: signed initData, k6 summary, report
+load/out/

@@ -1,0 +1,24 @@
+# Added on top of compose.prod.yml for the load test (scripts/load-test.ts): the same images,
+# settings and memory limits as on the VM, plus query statistics and k6. Nothing is published.
+
+services:
+  db:
+    command: ["postgres", "-c", "shared_preload_libraries=pg_stat_statements"]
+    volumes:
+      - ../load:/load:ro
+
+  caddy:
+    ports: !reset []
+    networks:
+      default:
+        # Names under .internal get a certificate from Caddy itself, not from Let's Encrypt
+        aliases: [bulls.internal]
+
+  k6:
+    image: grafana/k6:2.3.0
+    profiles: [k6]
+    volumes:
+      - ../load:/load
+    environment:
+      BASE_URL: ${BASE_URL:-https://bulls.internal}
+      PLAYERS: ${PLAYERS:-1000}

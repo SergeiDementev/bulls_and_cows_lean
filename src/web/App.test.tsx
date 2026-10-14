@@ -1,7 +1,7 @@
 import { act, cleanup, render, screen, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { GameView, Language, SessionView } from "../shared/api.ts";
+import type { GameView, Language, SessionView, StatsView } from "../shared/api.ts";
 import { ApiError, type Api } from "./api.ts";
 import { App } from "./App.tsx";
 
@@ -10,15 +10,35 @@ afterEach(cleanup);
 const SECRET = "5017";
 
 /** An in-memory server: "5017" wins, any other guess scores nothing. */
-function fakeApi(options: { language?: Language; game?: GameView | null } = {}) {
+const noStats: StatsView = {
+  window: 20,
+  minWins: 5,
+  me: {
+    gamesPlayed: 0,
+    wins: 0,
+    bestResult: null,
+    averageAttempts: null,
+    averageGames: 0,
+    recentWins: 0,
+    place: null,
+  },
+  top: [],
+};
+
+function fakeApi(options: { language?: Language; game?: GameView | null; stats?: StatsView } = {}) {
   let game: GameView | null = options.game ?? null;
+  let language: Language = options.language ?? "ru";
   const ended = (status: GameView["status"]): GameView => ({ ...game!, status, secret: SECRET });
   const api = {
     session: vi.fn(async (): Promise<SessionView> => ({
-      player: { id: 1, username: null, language: options.language ?? "ru" },
+      player: { id: 1, username: null, language },
       game,
     })),
-    setLanguage: vi.fn(),
+    setLanguage: vi.fn(async (next: Language) => {
+      language = next;
+      return { player: { id: 1, username: null, language } };
+    }),
+    stats: vi.fn(async () => options.stats ?? noStats),
     newGame: vi.fn(async () => {
       game = { id: 7, status: "active", length: 4, attempts: [], remaining: null, secret: null };
       return game;
@@ -215,5 +235,135 @@ describe("Mini App", () => {
     await user.click(check);
     await act(async () => release());
     expect(api.guess).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("stats", () => {
+  const stats = (me: Partial<StatsView["me"]>, top: StatsView["top"] = []): StatsView => ({
+    ...noStats,
+    me: { ...noStats.me, ...me },
+    top,
+  });
+  const entry = (
+    place: number,
+    playerId: number,
+    username: string | null,
+    averageAttempts: number,
+  ) => ({
+    place,
+    playerId,
+    username,
+    averageAttempts,
+    recentWins: 5,
+  });
+
+  async function openStats(api: ReturnType<typeof fakeApi>) {
+    const { user } = open(api);
+    await user.click(await screen.findByRole("button", { name: "Статистика" }));
+    await screen.findByText("📊 Ваша статистика");
+    return user;
+  }
+
+  it("invites to play before the first game", async () => {
+    await openStats(fakeApi());
+    expect(screen.getByText("Сыграйте первую игру — здесь появится ваша статистика.")).toBeTruthy();
+    expect(screen.getByText("Пока в рейтинге никого нет — станьте первым.")).toBeTruthy();
+    expect(screen.getByText("До рейтинга — ещё 5 побед.")).toBeTruthy();
+    expect(
+      screen.getByText("Учитываются игроки, у которых не меньше 5 побед среди последних 20 игр."),
+    ).toBeTruthy();
+  });
+
+  it("shows the player's tiles; no best result without a win", async () => {
+    const me = { gamesPlayed: 3, wins: 0, averageAttempts: 10, averageGames: 3 };
+    await openStats(fakeApi({ stats: stats(me) }));
+    expect(screen.getByText("Сыграно игр").nextSibling?.textContent).toBe("3");
+    expect(screen.getByText("Среднее за 3 игры").nextSibling?.textContent).toBe("10");
+    expect(screen.queryByText("Лучший результат")).toBeNull();
+  });
+
+  it("shows the best result and a localized average", async () => {
+    const me = {
+      gamesPlayed: 12,
+      wins: 10,
+      bestResult: 4,
+      averageAttempts: 6.43,
+      averageGames: 12,
+    };
+    await openStats(fakeApi({ stats: stats(me) }));
+    expect(screen.getByText("Лучший результат").nextSibling?.textContent).toBe("4");
+    expect(screen.getByText("Среднее за 12 игр").nextSibling?.textContent).toBe("6,4");
+  });
+
+  it("names players without a username by number and highlights the player's own row", async () => {
+    const me = {
+      gamesPlayed: 9,
+      wins: 6,
+      recentWins: 6,
+      averageAttempts: 5.9,
+      averageGames: 9,
+      place: 2,
+    };
+    await openStats(
+      fakeApi({ stats: stats(me, [entry(1, 3, "anna_k", 5.4), entry(2, 1, null, 5.9)]) }),
+    );
+    const rows = screen.getAllByRole("listitem");
+    expect(rows.map((r) => r.textContent)).toEqual(["1.anna_k5,4", "2.Игрок #15,9"]);
+    expect(rows[1]!.className).toBe("me");
+    // In the top: no separate line about the place
+    expect(screen.queryByText(/Вы на/)).toBeNull();
+  });
+
+  it("gives the place of a player outside the top", async () => {
+    const me = {
+      gamesPlayed: 20,
+      wins: 9,
+      recentWins: 9,
+      averageAttempts: 7.1,
+      averageGames: 20,
+      place: 14,
+    };
+    await openStats(fakeApi({ stats: stats(me, [entry(1, 3, "anna_k", 5.4)]) }));
+    expect(screen.getByText("Вы на 14-м месте со средним 7,1.")).toBeTruthy();
+  });
+
+  it("counts the wins still missing for the rating", async () => {
+    const me = { gamesPlayed: 4, wins: 3, recentWins: 3, averageAttempts: 6, averageGames: 4 };
+    await openStats(fakeApi({ stats: stats(me, [entry(1, 3, "anna_k", 5.4)]) }));
+    expect(screen.getByText("До рейтинга — ещё 2 победы.")).toBeTruthy();
+  });
+
+  it("goes back to the game result without replaying the win", async () => {
+    const api = fakeApi();
+    const { user } = open(api);
+    await user.click(await screen.findByRole("button", { name: "Новая игра" }));
+    await type(user, SECRET);
+    await user.click(screen.getByRole("button", { name: "✓ Проверить" }));
+    await screen.findByText("🎉 С первой попытки! Загадано было 5017.");
+    await user.click(screen.getByRole("button", { name: "Статистика" }));
+    await user.click(await screen.findByRole("button", { name: "Назад" }));
+    expect(screen.getByText("🎉 С первой попытки! Загадано было 5017.")).toBeTruthy();
+    expect(document.querySelector(".move.winner")).toBeNull();
+  });
+});
+
+describe("language", () => {
+  it("switches the whole Mini App and stores the choice on the server", async () => {
+    const api = fakeApi();
+    const { user } = open(api);
+    await user.click(await screen.findByRole("button", { name: "🌐 English" }));
+    expect(await screen.findByRole("button", { name: "New game" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "🌐 Русский" })).toBeTruthy();
+    expect(api.setLanguage).toHaveBeenCalledWith("en");
+    expect(document.documentElement.lang).toBe("en");
+
+    await user.click(screen.getByRole("button", { name: "🌐 Русский" }));
+    expect(await screen.findByRole("button", { name: "Новая игра" })).toBeTruthy();
+  });
+
+  it("is not offered during a game", async () => {
+    const { user } = open(fakeApi());
+    await user.click(await screen.findByRole("button", { name: "Новая игра" }));
+    expect(screen.queryByRole("button", { name: "🌐 English" })).toBeNull();
   });
 });

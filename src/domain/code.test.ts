@@ -152,6 +152,26 @@ describe("remainingCount", () => {
     expect(remainingCount(4, [{ guess: "0123", bulls: 0, cows: 0 }])).toBe(360);
   });
 
+  it("matches checking score() against every code", () => {
+    fc.assert(
+      fc.property(
+        fc
+          .integer({ min: 1, max: 4 })
+          .chain((n) => fc.tuple(codeOf(n), fc.array(codeOf(n), { maxLength: 5 }))),
+        ([secret, guesses]) => {
+          const attempts = guesses.map((guess) => ({ guess, ...score(secret, guess) }));
+          const expected = allCodes(secret.length).filter((code) =>
+            attempts.every((a) => {
+              const s = score(code, a.guess);
+              return s.bulls === a.bulls && s.cows === a.cows;
+            }),
+          ).length;
+          return remainingCount(secret.length, attempts) === expected;
+        },
+      ),
+    );
+  });
+
   it("is 1 after the winning guess", () => {
     expect(remainingCount(4, [{ guess: "5017", bulls: 4, cows: 0 }])).toBe(1);
   });

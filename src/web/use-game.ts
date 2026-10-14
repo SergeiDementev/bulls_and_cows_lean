@@ -5,7 +5,13 @@
  * (409) → quietly reload it from the server; initData expired → ask to reopen the Mini App.
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { ErrorCode, GameView, Language } from "../shared/api.ts";
+import {
+  LANGUAGES,
+  type ErrorCode,
+  type GameView,
+  type Language,
+  type StatsView,
+} from "../shared/api.ts";
 import type { TextArgs } from "../shared/i18n.ts";
 import { ApiError, type Api } from "./api.ts";
 import { emptyInput, erase, guessOf, selectCell, typeDigit, type Input } from "./input.ts";
@@ -16,7 +22,11 @@ export type View =
   | { kind: "title"; result: GameView | null; celebrate: boolean }
   | { kind: "game" }
   | { kind: "confirm" }
-  | { kind: "expired" };
+  | { kind: "expired" }
+  /** `back` — the title screen it was opened from, with or without a game result. */
+  | { kind: "stats"; stats: StatsView; back: TitleView };
+
+type TitleView = Extract<View, { kind: "title" }>;
 
 /** `id` restarts the timer when the same toast is shown twice in a row. */
 export interface Toast {
@@ -28,6 +38,8 @@ export interface Toast {
 export interface GameState {
   view: View;
   language: Language;
+  /** Our player id: their own row is highlighted in the rating. */
+  playerId: number | null;
   /** The current or latest game; null before the first one. */
   game: GameView | null;
   input: Input;
@@ -49,7 +61,7 @@ const OUT_OF_SYNC: readonly ErrorCode[] = [
 /** Until a game exists. After that the length always comes from the game. */
 const DEFAULT_LENGTH = 4;
 
-const title = (result: GameView | null = null, celebrate = false): View => ({
+const title = (result: GameView | null = null, celebrate = false): TitleView => ({
   kind: "title",
   result,
   celebrate,
@@ -59,6 +71,7 @@ export function useGame(api: Api, initialLanguage: Language) {
   const [state, setState] = useState<GameState>({
     view: { kind: "loading" },
     language: initialLanguage,
+    playerId: null,
     game: null,
     input: emptyInput(DEFAULT_LENGTH),
     busy: true,
@@ -97,7 +110,7 @@ export function useGame(api: Api, initialLanguage: Language) {
       let view = s.view.kind === "loading" ? title() : s.view;
       // The game being played was finished elsewhere: show its result
       if (playing && game?.status !== "active") view = title(game);
-      return { language: player.language, game, input, view };
+      return { language: player.language, playerId: player.id, game, input, view };
     });
   }, [api, patch]);
 
@@ -218,6 +231,28 @@ export function useGame(api: Api, initialLanguage: Language) {
       run(async () => {
         const next = await api.abandon(game.id);
         patch({ game: next, view: title(next) });
+      });
+    },
+
+    openStats: () => {
+      const { view } = latest.current;
+      if (view.kind !== "title") return;
+      run(async () => {
+        const stats = await api.stats();
+        // Coming back must not replay the win animation
+        patch({ view: { kind: "stats", stats, back: { ...view, celebrate: false } } });
+      });
+    },
+
+    closeStats: () => patch((s) => (s.view.kind === "stats" ? { view: s.view.back } : {})),
+
+    // Stored on the server: the bot answers in the same language
+    switchLanguage: () => {
+      const { language } = latest.current;
+      const next = LANGUAGES[(LANGUAGES.indexOf(language) + 1) % LANGUAGES.length]!;
+      run(async () => {
+        const { player } = await api.setLanguage(next);
+        patch({ language: player.language });
       });
     },
 

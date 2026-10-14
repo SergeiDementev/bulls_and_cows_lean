@@ -74,18 +74,54 @@ export function allCodes(length: number): readonly string[] {
   return codes;
 }
 
-/** How many codes still agree with every answer so far. The secret is always among them. */
+/** A code as digits plus a bit per digit present: shared digits are then one AND and a count. */
+interface Encoded {
+  digits: Uint8Array;
+  mask: number;
+}
+
+function encode(code: string): Encoded {
+  const digits = Uint8Array.from(code, (c) => c.charCodeAt(0) - 48);
+  return { digits, mask: digits.reduce((mask, d) => mask | (1 << d), 0) };
+}
+
+function bitCount(x: number): number {
+  let count = 0;
+  for (; x; x &= x - 1) count++;
+  return count;
+}
+
+const encodedByLength = new Map<number, readonly Encoded[]>();
+
+/**
+ * How many codes still agree with every answer so far. The secret is always among them.
+ * Same result as checking score() against every code, but on digits and bit masks instead of
+ * strings: it runs on every move, and the load test showed it among the server's top costs.
+ */
 export function remainingCount(
   length: number,
   attempts: readonly (Score & { guess: string })[],
 ): number {
+  let codes = encodedByLength.get(length);
+  if (!codes) {
+    codes = allCodes(length).map(encode);
+    encodedByLength.set(length, codes);
+  }
+  const clues = attempts.map((a) => ({
+    ...encode(a.guess),
+    bulls: a.bulls,
+    shared: a.bulls + a.cows,
+  }));
+
   let count = 0;
-  for (const code of allCodes(length)) {
-    const fits = attempts.every((a) => {
-      const s = score(code, a.guess);
-      return s.bulls === a.bulls && s.cows === a.cows;
-    });
-    if (fits) count++;
+  candidates: for (const code of codes) {
+    for (const clue of clues) {
+      if (bitCount(code.mask & clue.mask) !== clue.shared) continue candidates;
+      let bulls = 0;
+      for (let i = 0; i < length; i++) if (code.digits[i] === clue.digits[i]) bulls++;
+      if (bulls !== clue.bulls) continue candidates;
+    }
+    count++;
   }
   return count;
 }
