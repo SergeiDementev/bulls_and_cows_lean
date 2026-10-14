@@ -12,6 +12,10 @@ header-cow = 🐄 Cow — right digit, wrong spot
 button-new-game = New game
 button-continue-game = Resume game
 
+# The label is in the language the button switches TO
+button-switch-language = 🌐 Русский
+button-stats = Stats
+
 ## Game
 
 game-intro = Crack the { $length }-digit number. Tap your guess on the keypad below.
@@ -36,6 +40,39 @@ game-won =
        *[other] 🎉 Cracked it! The number was { $secret } — you got it in { $attempts } guesses.
     }
 game-abandoned = Game over. The number was { $secret }.
+
+## Stats and leaderboard
+
+button-back = Back
+stats-title = 📊 Your stats
+stats-no-games = Play your first game and your stats will show up here.
+stat-games-played = Games played
+stat-wins = Wins
+stat-best = Fewest guesses
+stat-average =
+    { $games ->
+        [one] Average, last game
+       *[other] Average, last { $games } games
+    }
+average = { NUMBER($average, maximumFractionDigits: 1) }
+
+leaderboard-title = 🏆 Leaderboard — fewest guesses on average
+leaderboard-player = Player #{ $number }
+leaderboard-empty = Nobody on the board yet — be the first.
+# $place is an ordinal: 1st, 2nd, 3rd, 14th
+leaderboard-me-place =
+    You're { $place }{ $place ->
+        [one] st
+        [two] nd
+        [few] rd
+       *[other] th
+    } with an average of { NUMBER($average, maximumFractionDigits: 1) }.
+leaderboard-me-need-wins =
+    { $left ->
+        [one] One more win to make the board.
+       *[other] { $left } more wins to make the board.
+    }
+leaderboard-rule = To be ranked, you need { $minWins } wins in your last { $window } games.
 
 ## Toasts
 

@@ -6,6 +6,7 @@ import type {
   Language,
   PlayerView,
   SessionView,
+  StatsView,
 } from "../shared/api.ts";
 
 /** The server refused with a code. Anything else thrown here means no connection. */
@@ -50,6 +51,7 @@ export function createApi(initData: string, fetchFn: typeof fetch = (...a) => fe
     guess: (gameId: number, guess: string, attempt: number) =>
       request<GameView>("POST", `/api/games/${gameId}/guesses`, { guess, attempt }),
     abandon: (gameId: number) => request<GameView>("POST", `/api/games/${gameId}/abandon`),
+    stats: () => request<StatsView>("GET", "/api/stats"),
     reportError: (report: ClientErrorReport) => request<void>("POST", "/api/errors", report),
   };
 }

@@ -25,8 +25,18 @@ function hashOf(fields: URLSearchParams, botToken: string): string {
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
     .map(([key, value]) => `${key}=${value}`)
     .join("\n");
-  const secretKey = createHmac("sha256", "WebAppData").update(botToken).digest();
-  return createHmac("sha256", secretKey).update(dataCheckString).digest("hex");
+  return createHmac("sha256", secretKeyOf(botToken)).update(dataCheckString).digest("hex");
+}
+
+// Derived from the token once instead of on every request: the load test showed it in the profile
+const secretKeys = new Map<string, Buffer>();
+function secretKeyOf(botToken: string): Buffer {
+  let key = secretKeys.get(botToken);
+  if (!key) {
+    key = createHmac("sha256", "WebAppData").update(botToken).digest();
+    secretKeys.set(botToken, key);
+  }
+  return key;
 }
 
 export function verifyInitData(

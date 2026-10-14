@@ -84,3 +84,29 @@ test("has no accessibility violations on the main screens", async ({ page }) => 
   await page.getByRole("button", { name: "4", exact: true }).click();
   await check();
 });
+
+test("shows stats after a game and switches the language", async ({ page }) => {
+  await openAsPlayer(page);
+  await page.getByRole("button", { name: "Новая игра" }).click();
+  await typeGuess(page, "0123");
+  await page.getByRole("button", { name: "Завершить игру" }).click();
+  await page.getByRole("button", { name: "Да, завершить" }).click();
+  await expect(page.getByText(/^Игра завершена\. Было загадано число \d{4}\.$/)).toBeVisible();
+
+  await page.getByRole("button", { name: "Статистика" }).click();
+  // One abandoned game with a move counts as 10 attempts
+  await expect(page.getByText("Сыграно игр")).toBeVisible();
+  await expect(page.getByText("Среднее за последнюю игру")).toBeVisible();
+  await expect(page.getByText("До рейтинга — ещё 5 побед.")).toBeVisible();
+  const { violations } = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+  expect(violations.map((v) => v.id)).toEqual([]);
+
+  await page.getByRole("button", { name: "Назад" }).click();
+  await page.getByRole("button", { name: "🌐 English" }).click();
+  await expect(page.getByRole("button", { name: "New game" })).toBeVisible();
+  await expect(page.getByText(/^Game over\. The number was \d{4}\.$/)).toBeVisible();
+
+  // The choice is stored on the server: a fresh open is in English too
+  await page.reload();
+  await expect(page.getByRole("button", { name: "New game" })).toBeVisible();
+});

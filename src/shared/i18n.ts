@@ -1,9 +1,16 @@
 /** Texts from locales/*.ftl for the Mini App and the bot. Fluent picks plural forms per language. */
-import { FluentBundle, FluentResource, type FluentVariable } from "@fluent/bundle";
+import { FluentBundle, FluentNumber, FluentResource, type FluentVariable } from "@fluent/bundle";
 import { LANGUAGES, type Language } from "./api.ts";
 
 export type TextArgs = Readonly<Record<string, FluentVariable>>;
 export type Translate = (key: string, args?: TextArgs) => string;
+
+/**
+ * A place in the rating: 1st, 2nd, 3rd, 14th. Fluent then picks forms by the ordinal plural
+ * rules of the language; NUMBER() in a .ftl cannot ask for that, so the code marks the value.
+ */
+export const ordinal = (value: number): FluentVariable =>
+  new FluentNumber(value, { type: "ordinal" } as Intl.NumberFormatOptions);
 
 /** Message ids in one .ftl source. */
 export const keysOf = (source: string): string[] =>

@@ -13,6 +13,10 @@ header-cow = 🐄 корова — цифра есть, но на другом �
 button-new-game = Новая игра
 button-continue-game = Продолжить игру
 
+# Подпись — на том языке, НА который переключает кнопка
+button-switch-language = 🌐 English
+button-stats = Статистика
+
 ## Игра
 
 game-intro = Загадано число из { $length } разных цифр. Наберите догадку на клавиатуре ниже.
@@ -37,6 +41,39 @@ game-won =
        *[other] 🎉 Вы угадали число { $secret } за { $attempts } попыток!
     }
 game-abandoned = Игра завершена. Было загадано число { $secret }.
+
+## Статистика и рейтинг
+
+button-back = Назад
+stats-title = 📊 Ваша статистика
+stats-no-games = Сыграйте первую игру — здесь появится ваша статистика.
+stat-games-played = Сыграно игр
+stat-wins = Побед
+stat-best = Лучший результат
+# $games — по скольким последним играм посчитано среднее (до 20)
+stat-average =
+    { $games ->
+        [1] Среднее за последнюю игру
+        [one] Среднее за { $games } игру
+        [few] Среднее за { $games } игры
+       *[other] Среднее за { $games } игр
+    }
+# Среднее в плитке и в рейтинге: одна цифра после запятой
+average = { NUMBER($average, maximumFractionDigits: 1) }
+
+leaderboard-title = 🏆 Рейтинг по среднему числу попыток
+# Имя игрока без username в Telegram
+leaderboard-player = Игрок #{ $number }
+leaderboard-empty = Пока в рейтинге никого нет — станьте первым.
+# $place — порядковое число; по-русски форма одна: «на 14-м месте»
+leaderboard-me-place = Вы на { $place }-м месте со средним { NUMBER($average, maximumFractionDigits: 1) }.
+leaderboard-me-need-wins =
+    До рейтинга — ещё { $left } { $left ->
+        [one] победа
+        [few] победы
+       *[other] побед
+    }.
+leaderboard-rule = Учитываются игроки, у которых не меньше { $minWins } побед среди последних { $window } игр.
 
 ## Короткие уведомления
 

@@ -7,7 +7,7 @@
   --page: var(--tg-theme-bg-color, #ffffff);
   --ink: var(--tg-theme-text-color, #1f1d1b);
   /* Our own grey, not Telegram's hint colour: that one is often below 4.5:1 on white */
-  --muted: #797572;
+  --muted: #6b6865; /* 4.8:1 on the tiles, 5.5:1 on white */
   --board: #f3eee8; /* подложка клавиатуры и пустых клеток */
   --tile: #eee4da; /* плитка-цифра */
   --tile-ink: #5e564d;
@@ -28,7 +28,7 @@
 :root[data-theme="dark"] {
   --page: var(--tg-theme-bg-color, #17212b);
   --ink: var(--tg-theme-text-color, #f5f5f5);
-  --muted: #8296aa;
+  --muted: #93a5b8; /* 5.3:1 on the dark tiles */
   --board: #223040;
   --tile: #3a3630;
   --tile-ink: #f1e8dc;
@@ -46,7 +46,7 @@
   :root:not([data-theme]) {
     --page: #17212b;
     --ink: #f5f5f5;
-    --muted: #8296aa;
+    --muted: #93a5b8;
     --board: #223040;
     --tile: #3a3630;
     --tile-ink: #f1e8dc;
@@ -404,6 +404,64 @@ h1 {
 }
 .offline .btn {
   width: auto;
+}
+
+/* Статистика — плитки с подписью над числом (макет) */
+h2 {
+  font-size: 17px;
+  margin: 6px 0 0;
+}
+.stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.stat {
+  background: var(--board);
+  border-radius: 6px;
+  padding: 10px 12px;
+  display: grid;
+  gap: 4px;
+  align-content: space-between;
+}
+.stat .label {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 700;
+}
+.stat .value {
+  font: 800 26px/1 var(--font);
+  font-variant-numeric: tabular-nums;
+}
+.board-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-variant-numeric: tabular-nums;
+}
+.board-list li {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--muted) 25%, transparent);
+}
+.board-list .name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.board-list .me {
+  font-weight: 800;
+}
+.rule {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0;
 }
 
 /* Победа: плитки угаданного хода по очереди подпрыгивают и становятся золотыми,
