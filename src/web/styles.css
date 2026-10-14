@@ -1,0 +1,435 @@
+/*
+ * Design carried over from v1 (docs/assets/webapp-mockup.html, the "Mix" variant): page
+ * background and text from the player's Telegram theme, our own sand palette for tiles.
+ * --tg-theme-* come from Telegram; outside it the fallbacks apply.
+ */
+:root {
+  --page: var(--tg-theme-bg-color, #ffffff);
+  --ink: var(--tg-theme-text-color, #1f1d1b);
+  /* Our own grey, not Telegram's hint colour: that one is often below 4.5:1 on white */
+  --muted: #797572;
+  --board: #f3eee8; /* подложка клавиатуры и пустых клеток */
+  --tile: #eee4da; /* плитка-цифра */
+  --tile-ink: #5e564d;
+  --used: #e2d9cf; /* набранная цифра (точка) */
+  --bull: #e9b92a; /* бык — золото */
+  --cow: #f2a96b; /* корова — персик */
+  --chip-ink: #ffffff;
+  --btn: #84705e; /* главная кнопка; темнее, чем в v1: белый текст на ней — 4.7:1 */
+  --btn-ink: #ffffff;
+  --btn2: #f3eee8; /* второстепенная кнопка */
+  --btn2-ink: #5e564d;
+  --font:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Тёмная палитра плиток. В Telegram тему сообщает data-theme (telegram.ts);
+   вне Telegram — настройка системы */
+:root[data-theme="dark"] {
+  --page: var(--tg-theme-bg-color, #17212b);
+  --ink: var(--tg-theme-text-color, #f5f5f5);
+  --muted: #8296aa;
+  --board: #223040;
+  --tile: #3a3630;
+  --tile-ink: #f1e8dc;
+  --used: #1c2733;
+  --bull: #d8b13c;
+  --cow: #cf915a;
+  --chip-ink: #17212b;
+  --btn: #c9a27e;
+  --btn-ink: #17212b;
+  --btn2: #223040;
+  --btn2-ink: #e6d8c6;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --page: #17212b;
+    --ink: #f5f5f5;
+    --muted: #8296aa;
+    --board: #223040;
+    --tile: #3a3630;
+    --tile-ink: #f1e8dc;
+    --used: #1c2733;
+    --bull: #d8b13c;
+    --cow: #cf915a;
+    --chip-ink: #17212b;
+    --btn: #c9a27e;
+    --btn-ink: #17212b;
+    --btn2: #223040;
+    --btn2-ink: #e6d8c6;
+    color-scheme: dark;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+body {
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--font);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Одна колонка шириной с телефон */
+.screen {
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 20px 16px calc(28px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Название — в одну строку (решение автора): размер от ширины экрана, но не крупнее 40 px */
+h1 {
+  font-size: clamp(24px, 8.5vw, 40px);
+  white-space: nowrap;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 8px 0 0;
+  line-height: 1.05;
+}
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+/* «Я загадываю…» и объяснение про быка и корову — одним кеглем (решение автора) */
+.lead {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.45;
+}
+.legend {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 16px;
+  line-height: 1.45;
+}
+.legend li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: start;
+}
+.muted {
+  color: var(--muted);
+}
+
+.btn {
+  appearance: none;
+  border: 0;
+  border-radius: 6px;
+  padding: 14px 16px;
+  font: 700 17px/1 var(--font);
+  cursor: pointer;
+  background: var(--btn2);
+  color: var(--btn2-ink);
+  width: 100%;
+  text-align: center;
+  text-decoration: none;
+}
+.btn.primary {
+  background: var(--btn);
+  color: var(--btn-ink);
+}
+.btn.slim {
+  padding: 10px 16px;
+  font-size: 15px;
+}
+/* Pinch zoom stays available; a double tap while typing digits must not zoom */
+.btn,
+.key,
+.slot {
+  touch-action: manipulation;
+}
+.btn:disabled,
+.key:disabled {
+  opacity: 0.6;
+}
+.btn:focus-visible,
+.key:focus-visible,
+.slot:focus-visible {
+  outline: 3px solid var(--bull);
+  outline-offset: 2px;
+}
+.btn:active,
+.key:active {
+  transform: scale(0.97);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .btn,
+  .key {
+    transition: transform 0.08s;
+  }
+}
+.row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.stack {
+  display: grid;
+  gap: 10px;
+}
+
+/* Плитки цифр */
+.chip {
+  display: inline-grid;
+  place-items: center;
+  height: 28px;
+  border-radius: 4px;
+  font: 800 15px/1 var(--font);
+  font-variant-numeric: tabular-nums;
+}
+.digits {
+  display: inline-flex;
+  gap: 4px;
+}
+.digits .chip {
+  background: var(--tile);
+  color: var(--tile-ink);
+  width: 30px;
+}
+.count.bull {
+  background: var(--bull);
+  color: var(--chip-ink);
+}
+.count.cow {
+  background: var(--cow);
+  color: var(--chip-ink);
+}
+
+/* Значки быка и коровы: системные эмодзи, крупно и без плашки (выбор автора) */
+.ico {
+  display: inline-block;
+  width: 1.3em;
+  height: 1.3em;
+  font-size: 20px;
+  line-height: 1.3em;
+  text-align: center;
+  font-style: normal;
+  vertical-align: middle;
+}
+.count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  font: 800 15px/1 var(--font);
+  font-variant-numeric: tabular-nums;
+}
+.pair {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* Список ходов — строки обычного размера (~30 px, решение автора) */
+.history {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.move {
+  display: grid;
+  grid-template-columns: 26px auto 1fr;
+  gap: 10px;
+  align-items: center;
+  font-variant-numeric: tabular-nums;
+}
+.move .n {
+  color: var(--muted);
+  font-weight: 700;
+  text-align: right;
+}
+.move .score {
+  display: inline-flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.remaining {
+  font-size: 14px;
+  color: var(--muted);
+  margin: 0;
+}
+
+/* Экран игры — плотнее остальных */
+.screen.game {
+  gap: 10px;
+  padding-top: 12px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+}
+.game .remaining {
+  font-size: 13px;
+}
+.game .lead {
+  font-size: 15px;
+}
+/* Размер кнопок и клеток — от высоты экрана, но не мельче пальца (44 px) и не крупнее 56 px */
+.game .key {
+  height: clamp(44px, 7dvh, 56px);
+}
+.game .slot {
+  height: clamp(44px, 7.5dvh, 56px);
+}
+
+/* Ввод и клавиатура */
+.your-move {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  text-align: center;
+}
+.slots {
+  display: grid;
+  gap: 6px;
+}
+.slot {
+  appearance: none;
+  border: 3px solid transparent;
+  height: 48px;
+  border-radius: 6px;
+  background: var(--board);
+  color: var(--tile-ink);
+  display: grid;
+  place-items: center;
+  font: 800 24px/1 var(--font);
+  cursor: pointer;
+  padding: 0;
+}
+.slot.filled {
+  background: var(--tile);
+}
+.slot.cursor {
+  border-color: var(--btn);
+}
+/* Кнопка ~92×44 — соотношение сторон ~2,1 к 1 (решение автора по макету) */
+.pad {
+  background: var(--board);
+  border-radius: 8px;
+  padding: 6px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  width: 100%;
+  max-width: 300px;
+  margin-inline: auto;
+}
+.key {
+  appearance: none;
+  border: 0;
+  border-radius: 6px;
+  background: var(--tile);
+  color: var(--tile-ink);
+  height: 44px;
+  font: 800 22px/1 var(--font);
+  cursor: pointer;
+}
+.key.used {
+  background: var(--used);
+  color: var(--muted);
+  cursor: default;
+}
+.key.check {
+  background: var(--btn);
+  color: var(--btn-ink);
+  font-size: 13px;
+}
+.key.erase {
+  font-size: 20px;
+}
+
+.question {
+  font-size: 17px;
+  font-weight: 700;
+  margin: 4px 0 0;
+}
+.result {
+  font-size: 22px;
+  font-weight: 800;
+  margin: 8px 0 0;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+.screen.message {
+  min-height: 100dvh;
+  justify-content: center;
+  text-align: center;
+}
+
+/* Короткое уведомление (как всплывающее уведомление у бота) */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: var(--page);
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  max-width: calc(100% - 32px);
+  text-align: center;
+}
+
+/* Нет связи — полоса сверху с кнопкой «Повторить» */
+.offline {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: calc(8px + env(safe-area-inset-top, 0px)) 16px 8px;
+  background: var(--ink);
+  color: var(--page);
+  font-weight: 600;
+}
+.offline .btn {
+  width: auto;
+}
+
+/* Победа: плитки угаданного хода по очереди подпрыгивают и становятся золотыми,
+   в духе 2048 — без конфетти (docs/11-webapp-screens.md, «Победа») */
+.winner .digits .chip {
+  background: var(--bull);
+  color: var(--chip-ink);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .winner .digits .chip {
+    /* 0,7 с на плитку — чтобы прыжок было видно (решение автора по ручной проверке) */
+    animation: win-pop 0.7s ease-out both;
+  }
+}
+@keyframes win-pop {
+  0% {
+    transform: scale(1);
+    background: var(--tile);
+    color: var(--tile-ink);
+  }
+  45% {
+    transform: scale(1.3);
+  }
+  100% {
+    transform: scale(1);
+    background: var(--bull);
+    color: var(--chip-ink);
+  }
+}

@@ -38,3 +38,35 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test:coverage
+
+  # The production Mini App against a real server, in Chromium and WebKit
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        # AWS mirror of the official image: Docker Hub rate limits broke CI in v1
+        image: public.ecr.aws/docker/library/postgres:17-alpine
+        env:
+          POSTGRES_USER: bulls
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: bulls
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U bulls" --health-interval 2s --health-timeout 5s --health-retries 15
+    env:
+      DATABASE_URL: postgres://bulls:ci-only-password@127.0.0.1:5432/bulls
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium webkit
+      - run: pnpm test:e2e
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-traces
+          path: test-results/

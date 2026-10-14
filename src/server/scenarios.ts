@@ -10,6 +10,7 @@ import {
   type FinishedGame,
 } from "../domain/stats.ts";
 import type { GameView, Language, PlayerView, SessionView, StatsView } from "../shared/api.ts";
+import { languageFrom } from "../shared/i18n.ts";
 import type { Database, Db } from "./db.ts";
 import { AppError } from "./errors.ts";
 import type { TelegramUser } from "./init-data.ts";
@@ -22,10 +23,6 @@ const PLAYER_COLUMNS = ["id", "username", "language"] as const;
 const GUESS_COLUMNS = ["attempt_no", "value", "bulls", "cows", "remaining"] as const;
 
 const round2 = (n: number): number => Math.round(n * 100) / 100;
-
-/** Language is chosen once, at registration; later the player may switch it themselves. */
-const languageFrom = (code: string | null): Language =>
-  code?.toLowerCase().startsWith("ru") ? "ru" : "en";
 
 /** The only place a GameView is built, so the secret cannot leak from some other path. */
 function toGameView(game: GameRow, guesses: readonly GuessRow[]): GameView {

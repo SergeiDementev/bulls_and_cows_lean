@@ -4,6 +4,8 @@ import { z } from "zod";
 import { LANGUAGES, type ErrorBody, type ErrorCode } from "../shared/api.ts";
 import type { Config } from "./config.ts";
 import { queryStats, type Db, type QueryStats } from "./db.ts";
+import { timingSafeEqual } from "node:crypto";
+import { handleUpdate, type Update } from "./bot.ts";
 import { AppError, STATUS } from "./errors.ts";
 import { verifyInitData, type TelegramUser } from "./init-data.ts";
 import { RateLimiter } from "./rate-limit.ts";
@@ -159,6 +161,24 @@ export function buildApp({ db, config, now = Date.now, logStream }: AppDeps) {
     req.log.warn({ clientError: report, telegramUser: userOf(req).id }, "client error");
     return reply.status(202).send();
   });
+
+  const { WEBAPP_URL, WEBHOOK_SECRET } = config;
+  if (WEBAPP_URL && WEBHOOK_SECRET) {
+    app.post("/telegram/webhook", async (req, reply) => {
+      // Telegram sends the secret given in setWebhook; nobody else knows it
+      const given = Buffer.from(String(req.headers["x-telegram-bot-api-secret-token"] ?? ""));
+      const expected = Buffer.from(WEBHOOK_SECRET);
+      if (given.length !== expected.length || !timingSafeEqual(given, expected)) {
+        throw new AppError("auth.unauthorized");
+      }
+      const answer = await handleUpdate(req.body as Update, {
+        db,
+        webAppUrl: WEBAPP_URL,
+        gameLength: config.GAME_LENGTH,
+      });
+      return answer ?? reply.status(200).send();
+    });
+  }
 
   // Closed to the internet by Caddy. Checks the database too: a running process is not a working one
   app.get("/health", async () => {
