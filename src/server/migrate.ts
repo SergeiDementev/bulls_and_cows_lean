@@ -2,11 +2,13 @@ import { Migrator, type Migration } from "kysely/migration";
 import type { Db } from "./db.ts";
 import * as init from "./migrations/0001_init.ts";
 import * as ratingIndex from "./migrations/0002_rating_index.ts";
+import * as botGreetings from "./migrations/0003_bot_greetings.ts";
 
 // Listed explicitly rather than read from disk: nothing to resolve at runtime in the container
 const migrations: Record<string, Migration> = {
   "0001_init": init,
   "0002_rating_index": ratingIndex,
+  "0003_bot_greetings": botGreetings,
 };
 
 /** Applies pending migrations. Kysely holds a database lock, so two processes cannot race. */

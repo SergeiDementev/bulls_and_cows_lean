@@ -5,7 +5,13 @@ import { LANGUAGES, type ErrorBody, type ErrorCode } from "../shared/api.ts";
 import type { Config } from "./config.ts";
 import { queryStats, type Db, type QueryStats } from "./db.ts";
 import { timingSafeEqual } from "node:crypto";
-import { handleUpdate, type Update } from "./bot.ts";
+import {
+  createTelegram,
+  handleUpdate,
+  onLanguageChanged,
+  type BotDeps,
+  type Update,
+} from "./bot.ts";
 import { AppError, STATUS } from "./errors.ts";
 import { verifyInitData, type TelegramUser } from "./init-data.ts";
 import { RateLimiter } from "./rate-limit.ts";
@@ -18,6 +24,8 @@ export interface AppDeps {
   now?: () => number;
   /** Where log lines go; stdout by default. Tests read them. */
   logStream?: { write(line: string): void };
+  /** The Bot API transport; tests pass a fake Telegram. */
+  telegramFetch?: typeof fetch;
 }
 
 const GuessBody = z.strictObject({ guess: z.string(), attempt: z.number().int() });
@@ -51,7 +59,7 @@ function parse<T>(schema: z.ZodType<T>, value: unknown): T {
   return result.data;
 }
 
-export function buildApp({ db, config, now = Date.now, logStream }: AppDeps) {
+export function buildApp({ db, config, now = Date.now, logStream, telegramFetch }: AppDeps) {
   const app = Fastify({
     logger: { level: config.LOG_LEVEL, ...(logStream && { stream: logStream }) },
     // Caddy reaches the server over the private Docker network; only such hops may set the client IP
@@ -127,6 +135,19 @@ export function buildApp({ db, config, now = Date.now, logStream }: AppDeps) {
 
   app.setNotFoundHandler((_req, reply) => reply.status(404).send(errorBody("route.not_found")));
 
+  // The bot works only where its webhook is configured: on the server, not locally
+  const { WEBAPP_URL, WEBHOOK_SECRET } = config;
+  const bot: BotDeps | null =
+    WEBAPP_URL && WEBHOOK_SECRET
+      ? {
+          db,
+          telegram: createTelegram(config.BOT_TOKEN, telegramFetch),
+          webAppUrl: WEBAPP_URL,
+          gameLength: config.GAME_LENGTH,
+          log: app.log,
+        }
+      : null;
+
   // Present only under /api: the auth hook rejected the request otherwise
   const userOf = (req: object): TelegramUser => users.get(req)!;
   const playerOf = (req: object) => scenarios.findPlayer(db, userOf(req).id);
@@ -135,7 +156,10 @@ export function buildApp({ db, config, now = Date.now, logStream }: AppDeps) {
 
   app.patch("/api/me", async (req) => {
     const { language } = parse(LanguageBody, req.body);
-    return { player: await scenarios.setLanguage(db, (await playerOf(req)).id, language) };
+    const player = await scenarios.setLanguage(db, (await playerOf(req)).id, language);
+    // The greeting in the chat follows the Mini App language
+    if (bot) await onLanguageChanged(userOf(req).id, language, bot);
+    return { player };
   });
 
   app.post("/api/games", async (req, reply) => {
@@ -162,8 +186,7 @@ export function buildApp({ db, config, now = Date.now, logStream }: AppDeps) {
     return reply.status(202).send();
   });
 
-  const { WEBAPP_URL, WEBHOOK_SECRET } = config;
-  if (WEBAPP_URL && WEBHOOK_SECRET) {
+  if (bot && WEBHOOK_SECRET) {
     app.post("/telegram/webhook", async (req, reply) => {
       // Telegram sends the secret given in setWebhook; nobody else knows it
       const given = Buffer.from(String(req.headers["x-telegram-bot-api-secret-token"] ?? ""));
@@ -171,12 +194,9 @@ export function buildApp({ db, config, now = Date.now, logStream }: AppDeps) {
       if (given.length !== expected.length || !timingSafeEqual(given, expected)) {
         throw new AppError("auth.unauthorized");
       }
-      const answer = await handleUpdate(req.body as Update, {
-        db,
-        webAppUrl: WEBAPP_URL,
-        gameLength: config.GAME_LENGTH,
-      });
-      return answer ?? reply.status(200).send();
+      // Always 200 once the secret checks out: Telegram would resend a failed update again and again
+      await handleUpdate(req.body as Update, bot);
+      return reply.status(200).send();
     });
   }
 

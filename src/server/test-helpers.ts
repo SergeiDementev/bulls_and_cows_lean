@@ -42,13 +42,29 @@ export function useServer(overrides: Partial<Record<keyof Config, string>> = {})
     logs: [] as Record<string, unknown>[],
     app: undefined as unknown as ReturnType<typeof buildApp>,
     config: undefined as unknown as Config,
+    /** A fake Telegram: every Bot API call, in order; methods in `failing` are refused. */
+    telegram: {
+      calls: [] as { method: string; params: Record<string, unknown> }[],
+      failing: new Set<string>(),
+    },
+  };
+  let messageId = 100;
+  const telegramFetch: typeof fetch = async (url, init) => {
+    const method = String(url).split("/").at(-1)!;
+    ctx.telegram.calls.push({ method, params: JSON.parse(String(init?.body)) });
+    const body = ctx.telegram.failing.has(method)
+      ? { ok: false, description: "Bad Request: refused by the test" }
+      : { ok: true, result: method === "sendMessage" ? { message_id: ++messageId } : true };
+    return new Response(JSON.stringify(body));
   };
 
   beforeEach(async () => {
     await ctx.app?.close();
-    await sql`truncate guesses, games, players restart identity cascade`.execute(db);
+    await sql`truncate guesses, games, players, bot_greetings restart identity cascade`.execute(db);
     ctx.now = Date.now();
     ctx.logs = [];
+    ctx.telegram = { calls: [], failing: new Set() };
+    messageId = 100;
     ctx.config = loadConfig({
       DATABASE_URL: inject("testDatabaseUrl"),
       BOT_TOKEN,
@@ -60,6 +76,7 @@ export function useServer(overrides: Partial<Record<keyof Config, string>> = {})
       config: ctx.config,
       now: () => ctx.now,
       logStream: { write: (line) => void ctx.logs.push(JSON.parse(line)) },
+      telegramFetch,
     });
   });
 

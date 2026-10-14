@@ -26,6 +26,12 @@ export interface Database {
     started_at: Generated<Date>;
     finished_at: Date | null;
   };
+  bot_greetings: {
+    telegram_id: ColumnType<string, number, number>;
+    chat_id: ColumnType<string, number, number>;
+    message_id: number;
+    sent_at: Generated<Date>;
+  };
   guesses: {
     game_id: number;
     attempt_no: number;
