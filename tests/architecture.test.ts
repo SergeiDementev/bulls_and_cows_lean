@@ -1,7 +1,10 @@
 import { ESLint } from "eslint";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 const eslint = new ESLint();
+
+// The first lint loads TypeScript and the React plugins: slow, especially under coverage
+vi.setConfig({ testTimeout: 30_000 });
 
 /** Lints `code` as if it lived at `filePath` and returns the restricted-import messages. */
 async function boundaryErrors(filePath: string, code: string): Promise<string[]> {
@@ -10,6 +13,23 @@ async function boundaryErrors(filePath: string, code: string): Promise<string[]>
     .filter((m) => m.ruleId === "no-restricted-imports")
     .map((m) => m.message);
 }
+
+describe("player-facing text", () => {
+  it("is not written into Mini App markup", async () => {
+    const [result] = await eslint.lintText("export const A = () => <p>Новая игра</p>;", {
+      filePath: "src/web/A.tsx",
+    });
+    expect(result?.messages.map((m) => m.ruleId)).toContain("react/jsx-no-literals");
+  });
+
+  it("may come from a translation", async () => {
+    const [result] = await eslint.lintText(
+      'export const A = ({ t }: { t: (k: string) => string }) => <p>{t("x")}.</p>;',
+      { filePath: "src/web/A.tsx" },
+    );
+    expect(result?.messages.filter((m) => m.ruleId === "react/jsx-no-literals")).toEqual([]);
+  });
+});
 
 describe("module boundaries", () => {
   it.each([

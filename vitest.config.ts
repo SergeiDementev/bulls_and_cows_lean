@@ -8,8 +8,11 @@ export default defineConfig({
         test: {
           name: "unit",
           include: ["src/**/*.test.{ts,tsx}", "tests/**/*.test.ts"],
-          exclude: ["src/**/*.db.test.ts"],
+          exclude: ["src/**/*.db.test.ts", "src/web/**"],
         },
+      },
+      {
+        test: { name: "web", include: ["src/web/**/*.test.{ts,tsx}"], environment: "jsdom" },
       },
       {
         test: {
@@ -24,7 +27,12 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: ["src/**/*.{ts,tsx}"],
-      exclude: ["src/**/*.test.{ts,tsx}", "src/server/test-*.ts", "src/server/main.ts"],
+      exclude: [
+        "src/**/*.test.{ts,tsx}",
+        "src/server/test-*.ts",
+        "src/server/main.ts",
+        "src/web/main.tsx",
+      ],
       reporter: ["text", "html"],
       thresholds: {
         "src/domain/**": { lines: 100, branches: 100, functions: 100, statements: 100 },

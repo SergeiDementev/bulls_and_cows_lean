@@ -1,4 +1,6 @@
 import js from "@eslint/js";
+import react from "eslint-plugin-react";
+import reactHooks from "eslint-plugin-react-hooks";
 import globals from "globals";
 import tseslint from "typescript-eslint";
 
@@ -13,7 +15,16 @@ const forbid = (...rules) => ({
 });
 
 export default tseslint.config(
-  { ignores: ["**/node_modules/", "**/dist/", "coverage/", "reports/"] },
+  {
+    ignores: [
+      "**/node_modules/",
+      "**/dist/",
+      "coverage/",
+      "reports/",
+      "playwright-report/",
+      "test-results/",
+    ],
+  },
 
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -25,6 +36,21 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": [
         "error",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      ],
+    },
+  },
+
+  {
+    files: ["src/web/**/*.{ts,tsx}"],
+    ...reactHooks.configs.flat["recommended-latest"],
+    plugins: { ...reactHooks.configs.flat["recommended-latest"].plugins, react },
+    languageOptions: { globals: { ...globals.browser } },
+    rules: {
+      ...reactHooks.configs.flat["recommended-latest"].rules,
+      // Every player-facing text comes from locales/*.ftl; only punctuation may sit in markup
+      "react/jsx-no-literals": [
+        "error",
+        { noStrings: false, ignoreProps: true, allowedStrings: ["."] },
       ],
     },
   },

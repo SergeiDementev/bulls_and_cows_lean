@@ -1,0 +1,11 @@
+.git
+.env
+node_modules
+dist
+coverage
+reports
+test-results
+playwright-report
+e2e
+**/*.test.ts
+**/*.test.tsx
