@@ -32,6 +32,8 @@ export default tseslint.config(
   // Module boundaries. tests/architecture.test.ts proves these rules actually fire.
   {
     files: ["src/domain/**"],
+    // Tests sit next to the rules and need the test libraries
+    ignores: ["**/*.test.ts"],
     rules: forbid(
       ["^(?!\\.)", `domain is pure rules: no packages and no Node.js modules (${DOC})`],
       ["(^|/)(server|web|shared)/", `domain does not depend on other folders (${DOC})`],
