@@ -41,6 +41,8 @@
 ```
 pnpm install     зависимости
 pnpm db:up       PostgreSQL для разработки (нужен .env по образцу .env.example)
-pnpm check       всё, что проверяет CI
+pnpm check       всё, что проверяет CI; тесты сервера идут на базе из db:up (база bulls_test)
+pnpm dev         сервер на localhost:3000, перезапуск при сохранении
+pnpm dev:init-data   подписанная строка входа для запросов к локальному серверу
 pnpm test:watch  тесты при сохранении
 ```
