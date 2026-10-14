@@ -4,3 +4,5 @@ reports/
 dist/
 # Documentation tables are aligned by hand
 *.md
+# Clickable mockup copied from v1 as is
+docs/assets/

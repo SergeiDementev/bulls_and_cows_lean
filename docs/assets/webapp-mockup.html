@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mini App «Быки и коровы»</title>
+<style>
+/* Макет Mini App «Быки и коровы» (docs/11-webapp-screens.md, этап 7).
+   Раскладка: одна колонка шириной с телефон. Оформление — «Смесь» (выбор автора).
+   Три варианта оформления отличаются только источником цветов; форма у всех одна:
+   плоские плитки со скруглением, крупные цифры, без теней — по примеру автора (2048). */
+:root {
+  /* «Песок» — своя палитра в духе 2048, светлая */
+  --page: #faf8ef;      /* фон страницы */
+  --board: #bbada0;     /* подложка клавиатуры и полей */
+  --tile: #eee4da;      /* плитка-цифра */
+  --tile-ink: #776e65;  /* цифра на плитке */
+  --used: #cdc1b4;      /* занятая цифра (точка) */
+  --ink: #776e65;       /* основной текст */
+  --muted: #a39a90;     /* подписи */
+  --bull: #edc53f;      /* бык — золото */
+  --cow: #f2b179;       /* корова — персик */
+  --chip-ink: #f9f6f2;  /* текст на быке и корове */
+  --btn: #8f7a66;       /* главная кнопка */
+  --btn-ink: #f9f6f2;
+  --btn2: #e4d9cd;      /* второстепенная кнопка */
+  --btn2-ink: #776e65;
+  --bar: #e9e3d8;       /* панель макета */
+  --bar-ink: #5e564d;
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #2a251f; --board: #3d362e; --tile: #4b4239; --tile-ink: #f1e8dc; --used: #342e27;
+    --ink: #ece2d5; --muted: #a59a8d; --bull: #d8b13c; --cow: #cf915a; --chip-ink: #2a251f;
+    --btn: #c9a27e; --btn-ink: #2a251f; --btn2: #4b4239; --btn2-ink: #ece2d5;
+    --bar: #352f28; --bar-ink: #d8cfc3; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --page: #2a251f; --board: #3d362e; --tile: #4b4239; --tile-ink: #f1e8dc; --used: #342e27;
+  --ink: #ece2d5; --muted: #a59a8d; --bull: #d8b13c; --cow: #cf915a; --chip-ink: #2a251f;
+  --btn: #c9a27e; --btn-ink: #2a251f; --btn2: #4b4239; --btn2-ink: #ece2d5;
+  --bar: #352f28; --bar-ink: #d8cfc3; color-scheme: dark;
+}
+
+/* «Тема Telegram» — все цвета из темы игрока (здесь — стандартные темы Telegram) */
+.app[data-variant="tg"] {
+  --page: #ffffff; --board: #efeff3; --tile: #ffffff; --tile-ink: #000000; --used: #e3e3e8;
+  --ink: #000000; --muted: #8e8e93; --bull: #2481cc; --cow: #8cb9e2; --chip-ink: #ffffff;
+  --btn: #2481cc; --btn-ink: #ffffff; --btn2: #efeff3; --btn2-ink: #2481cc;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .app[data-variant="tg"] {
+    --page: #17212b; --board: #232e3c; --tile: #2b3a4c; --tile-ink: #f5f5f5; --used: #1d2733;
+    --ink: #f5f5f5; --muted: #708499; --bull: #5288c1; --cow: #3d5f86; --chip-ink: #ffffff;
+    --btn: #5288c1; --btn-ink: #ffffff; --btn2: #232e3c; --btn2-ink: #6ab3f3;
+  }
+}
+:root[data-theme="dark"] .app[data-variant="tg"] {
+  --page: #17212b; --board: #232e3c; --tile: #2b3a4c; --tile-ink: #f5f5f5; --used: #1d2733;
+  --ink: #f5f5f5; --muted: #708499; --bull: #5288c1; --cow: #3d5f86; --chip-ink: #ffffff;
+  --btn: #5288c1; --btn-ink: #ffffff; --btn2: #232e3c; --btn2-ink: #6ab3f3;
+}
+
+/* «Смесь» — фон и текст из темы Telegram, плитки и быки с коровами — «песочные» */
+.app[data-variant="mix"] {
+  --page: #ffffff; --board: #f3eee8; --tile: #eee4da; --tile-ink: #5e564d; --used: #e2d9cf;
+  --ink: #1f1d1b; --muted: #8e8a86; --bull: #e9b92a; --cow: #f2a96b; --chip-ink: #ffffff;
+  --btn: #8f7a66; --btn-ink: #ffffff; --btn2: #f3eee8; --btn2-ink: #5e564d;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .app[data-variant="mix"] {
+    --page: #17212b; --board: #223040; --tile: #3a3630; --tile-ink: #f1e8dc; --used: #1c2733;
+    --ink: #f5f5f5; --muted: #8296aa; --bull: #d8b13c; --cow: #cf915a; --chip-ink: #17212b;
+    --btn: #c9a27e; --btn-ink: #17212b; --btn2: #223040; --btn2-ink: #e6d8c6;
+  }
+}
+:root[data-theme="dark"] .app[data-variant="mix"] {
+  --page: #17212b; --board: #223040; --tile: #3a3630; --tile-ink: #f1e8dc; --used: #1c2733;
+  --ink: #f5f5f5; --muted: #8296aa; --bull: #d8b13c; --cow: #cf915a; --chip-ink: #17212b;
+  --btn: #c9a27e; --btn-ink: #17212b; --btn2: #223040; --btn2-ink: #e6d8c6;
+}
+
+html, body { height: 100%; }
+body { background: var(--page); color: var(--ink); font-family: var(--font); }
+* { box-sizing: border-box; }
+
+/* Сама Mini App — колонка шириной с телефон */
+.app { background: var(--page); color: var(--ink); min-height: 100%; }
+.screen { max-width: 420px; margin: 0 auto; padding: 20px 16px 28px; display: flex; flex-direction: column; gap: 16px; }
+
+/* Название — в одну строку (решение автора): размер от ширины экрана, но не крупнее 40 px */
+h1 { font-size: clamp(28px, 10vw, 40px); white-space: nowrap; font-weight: 800; letter-spacing: -0.02em; margin: 8px 0 0; line-height: 1.05; }
+.lead { margin: 0; font-size: 16px; line-height: 1.45; }
+/* Объяснение про быка и корову — тем же кеглем, что и «Я загадываю…» (решение автора) */
+.legend { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; font-size: 16px; line-height: 1.45; }
+.legend li { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; }
+.muted { color: var(--muted); }
+
+.btn { appearance: none; border: 0; border-radius: 6px; padding: 14px 16px; font: 700 17px/1 var(--font); cursor: pointer; background: var(--btn2); color: var(--btn2-ink); width: 100%; }
+.btn.primary { background: var(--btn); color: var(--btn-ink); }
+.btn:focus-visible, .key:focus-visible, .seg button:focus-visible { outline: 3px solid var(--bull); outline-offset: 2px; }
+.btn:active, .key:active { transform: scale(0.97); }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.stack { display: grid; gap: 10px; }
+
+/* Плитки цифр */
+.chip { display: inline-grid; place-items: center; min-width: 28px; height: 28px; padding: 0 6px; border-radius: 4px; font: 800 15px/1 var(--font); font-variant-numeric: tabular-nums; }
+.digits { display: inline-flex; gap: 4px; }
+.digits .chip { background: var(--tile); color: var(--tile-ink); width: 30px; }
+.bull { background: var(--bull); color: var(--chip-ink); }
+.cow { background: var(--cow); color: var(--chip-ink); }
+
+/* Значки быка и коровы: системные эмодзи, крупно и без плашки (выбор автора) */
+.ico { display: inline-block; width: 1.3em; height: 1.3em; font-size: 20px; line-height: 1.3em; text-align: center; font-style: normal; vertical-align: middle; }
+.count { display: inline-grid; place-items: center; min-width: 26px; height: 26px; border-radius: 4px; font: 800 15px/1 var(--font); font-variant-numeric: tabular-nums; }
+.pair { display: inline-flex; align-items: center; gap: 3px; }
+
+/* Список ходов */
+.history { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.move { display: grid; grid-template-columns: 26px auto 1fr; gap: 10px; align-items: center; font-variant-numeric: tabular-nums; }
+.move .n { color: var(--muted); font-weight: 700; text-align: right; }
+.move .score { display: inline-flex; gap: 6px; justify-content: flex-end; }
+.remaining { font-size: 14px; color: var(--muted); margin: 0; }
+
+/* Экран игры — плотнее остальных. Строки ходов — обычного размера (~30 px, решение автора) */
+.screen.game { gap: 10px; padding-top: 12px; padding-bottom: 16px; }
+/* Размер кнопок и клеток — от высоты экрана, но не мельче пальца (44 px) и не крупнее 56 px */
+.game .key { height: clamp(44px, 7dvh, 56px); }
+.game .slot { height: clamp(44px, 7.5dvh, 56px); }
+.game .remaining { font-size: 13px; }
+.game .lead { font-size: 15px; }
+
+/* Ввод и клавиатура */
+.your-move { display: grid; gap: 6px; justify-items: center; }
+.slots { display: grid; grid-template-columns: repeat(4, 48px); gap: 6px; }
+.slot { appearance: none; border: 3px solid transparent; height: 48px; border-radius: 6px; background: var(--board); color: var(--tile-ink); display: grid; place-items: center; font: 800 24px/1 var(--font); cursor: pointer; padding: 0; }
+.slot.filled { background: var(--tile); }
+.slot.cursor { border-color: var(--btn); }
+.slot:focus-visible { outline: 3px solid var(--bull); outline-offset: 2px; }
+/* Ширина клавиатуры ограничена: кнопка ~92×44 — соотношение сторон ~2,1 к 1 (решение автора по макету;
+   квадратные кнопки 48×48 пробовали — прямоугольные удобнее) */
+.pad { background: var(--board); border-radius: 8px; padding: 6px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; width: 100%; max-width: 300px; margin-inline: auto; }
+.key { appearance: none; border: 0; border-radius: 6px; background: var(--tile); color: var(--tile-ink); height: 44px; font: 800 22px/1 var(--font); cursor: pointer; }
+.key.used { background: var(--used); color: var(--muted); cursor: default; }
+.key.check { background: var(--btn); color: var(--btn-ink); font-size: 13px; }
+.key.erase { font-size: 20px; }
+.btn.slim { padding: 10px 16px; font-size: 15px; }
+.question { font-size: 17px; font-weight: 700; margin: 4px 0 0; }
+.result { font-size: 22px; font-weight: 800; margin: 8px 0 0; line-height: 1.25; text-wrap: balance; }
+
+/* Статистика */
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.stat { background: var(--board); border-radius: 6px; padding: 10px 12px; display: grid; gap: 4px; }
+.stat .label { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.stat .value { font: 800 26px/1 var(--font); font-variant-numeric: tabular-nums; }
+h2 { font-size: 17px; margin: 6px 0 0; }
+.board-list { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; font-variant-numeric: tabular-nums; }
+.board-list li { display: grid; grid-template-columns: 28px 1fr auto; gap: 8px; padding: 6px 0; border-bottom: 1px solid color-mix(in srgb, var(--muted) 25%, transparent); }
+.board-list .me { font-weight: 800; }
+.rule { font-size: 13px; color: var(--muted); margin: 0; }
+
+/* Короткое уведомление (как всплывающее уведомление у бота) */
+.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--page); padding: 10px 16px; border-radius: 8px; font-size: 15px; font-weight: 600; max-width: calc(100% - 32px); }
+@media (prefers-reduced-motion: no-preference) { .btn, .key { transition: transform .08s; } }
+</style>
+</head>
+<body>
+<main class="app" id="app" data-variant="mix"><div class="screen" id="screen"></div></main>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+window.addEventListener("error", (e) => {
+  const box = document.getElementById("screen");
+  if (box) box.insertAdjacentHTML("beforeend", '<p style="color:#b3261e;font:14px monospace;white-space:pre-wrap">Ошибка макета: ' + String(e.message).replace(/[<&]/g, "") + "</p>");
+});
+// ---- Правила — только для макета (в настоящей Mini App их знает API) ----
+const ALL = [];
+for (let n = 0; n < 10000; n++) { const s = String(n).padStart(4, "0"); if (new Set(s).size === 4) ALL.push(s); }
+const score = (secret, guess) => { let b = 0, c = 0; for (let i = 0; i < 4; i++) { if (guess[i] === secret[i]) b++; else if (secret.includes(guess[i])) c++; } return [b, c]; };
+const remainingAfter = (moves) => ALL.filter((code) => moves.every((m) => { const [b, c] = score(code, m.g); return b === m.b && c === m.c; })).length;
+
+const state = { screen: "title", status: "none", secret: "5017", moves: [], input: [null, null, null, null], cursor: 0, returnTo: "title" };
+const EMPTY = () => [null, null, null, null];
+const typed = () => state.input.filter((d) => d !== null);
+/** Следующая пустая клетка: правее выбранной, потом с начала; пустых нет — выбора нет. */
+function nextEmpty(from) { for (let k = 1; k <= 4; k++) { const i = (from + k) % 4; if (state.input[i] === null) return i; } return null; }
+const SAMPLE_MOVES = [{ g: "0123", b: 0, c: 2 }, { g: "4503", b: 0, c: 2 }, { g: "1057", b: 2, c: 2 }, { g: "5017", b: 4, c: 0 }];
+
+function newGame() {
+  state.secret = ALL[Math.floor(Math.random() * ALL.length)];
+  state.moves = []; state.input = EMPTY(); state.cursor = 0; state.screen = "game"; state.status = "active";
+}
+
+// ---- Рисование ----
+const el = (html) => { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content; };
+const BULL = '<i class="ico bull-i" aria-hidden="true">🐂</i>', COW = '<i class="ico cow-i" aria-hidden="true">🐄</i>';
+const digits = (g) => `<span class="digits">${[...g].map((d) => `<span class="chip">${d}</span>`).join("")}</span>`;
+const historyList = () => state.moves.length === 0 ? "" : `<ol class="history">${state.moves.map((m, i) => `
+  <li class="move"><span class="n">${i + 1}.</span>${digits(m.g)}
+    <span class="score"><span class="pair" title="быки">${BULL}<span class="count bull">${m.b}</span></span><span class="pair" title="коровы">${COW}<span class="count cow">${m.c}</span></span></span></li>`).join("")}</ol>`;
+const active = () => state.status === "active";
+
+// Шапка — как в боте: название и правила. Видна на заглавном экране и после партии
+const header = () => `
+    <h1>Быки и коровы</h1>
+    <p class="lead">Я загадываю число из 4 разных цифр от 0 до 9 — ноль может стоять и первым. Попробуйте его угадать.</p>
+    <ul class="legend">
+      <li>${BULL}<span><b>бык</b> — цифра есть в числе и стоит на своём месте</span></li>
+      <li>${COW}<span><b>корова</b> — цифра есть, но на другом месте</span></li>
+    </ul>`;
+// Меню — как в боте: «Новая игра» (или «Продолжить игру»), «Статистика», язык
+const menu = () => `
+    <div class="stack">
+      <button class="btn primary" data-act="${active() ? "continue" : "new"}">${active() ? "Продолжить игру" : "Новая игра"}</button>
+      <button class="btn" data-act="stats">Статистика</button>
+      <button class="btn" data-act="lang">🌐 English</button>
+    </div>`;
+
+const SCREENS = {
+  title: () => header() + menu(),
+  game: () => {
+    const used = new Set(typed());
+    const key = (d) => used.has(d) ? `<button class="key used" data-act="used" aria-label="цифра ${d} уже набрана">·</button>` : `<button class="key" data-act="digit" data-d="${d}">${d}</button>`;
+    const slots = [0, 1, 2, 3].map((i) => `<button class="slot ${state.input[i] !== null ? "filled" : ""} ${state.cursor === i ? "cursor" : ""}" data-act="slot" data-i="${i}" aria-label="клетка ${i + 1}">${state.input[i] ?? ""}</button>`).join("");
+    const first = state.moves.length === 0;
+    return `
+    ${first ? '<p class="lead">Загадано число из 4 разных цифр. Наберите догадку на клавиатуре ниже.</p>' : ""}
+    ${historyList()}
+    ${state.moves.length ? `<p class="remaining">Осталось возможных вариантов: <b>${remainingAfter(state.moves)}</b></p>` : ""}
+    <div class="your-move"><span class="muted">${first ? "Ваш ход — нажмите на клетку, чтобы вписать цифру в неё" : "Ваш ход"}</span><div class="slots" aria-live="polite">${slots}</div></div>
+    <div class="pad">
+      ${["1","2","3","4","5","6","7","8","9"].map(key).join("")}
+      <button class="key erase" data-act="erase" aria-label="стереть">⌫</button>
+      ${key("0")}
+      <button class="key check" data-act="check">✓ Проверить</button>
+    </div>
+    <button class="btn slim" data-act="abandon">Завершить игру</button>`;
+  },
+  confirm: () => `
+    ${historyList()}
+    <p class="question">Завершить игру? Загаданное число будет раскрыто.</p>
+    <div class="row2">
+      <button class="btn primary" data-act="abandon-yes">Да, завершить</button>
+      <button class="btn" data-act="abandon-no">Нет, играть дальше</button>
+    </div>`,
+  won: () => header() + `
+    <p class="result">🎉 Вы угадали число ${state.secret} за ${state.moves.length} ${plural(state.moves.length)}!</p>
+    ${historyList()}` + menu(),
+  abandoned: () => header() + `
+    <p class="result">Игра завершена. Было загадано число ${state.secret}.</p>
+    ${historyList()}` + menu(),
+  stats: () => `
+    <h2>📊 Ваша статистика</h2>
+    <div class="stats">
+      <div class="stat"><span class="label">Сыграно игр</span><span class="value">12</span></div>
+      <div class="stat"><span class="label">Побед</span><span class="value">10</span></div>
+      <div class="stat"><span class="label">Среднее попыток</span><span class="value">6,4</span></div>
+      <div class="stat"><span class="label">Лучший результат</span><span class="value">4</span></div>
+    </div>
+    <h2>🏆 Рейтинг по среднему числу попыток</h2>
+    <ol class="board-list">
+      <li><span class="muted">1.</span><span>anna_k</span><b>5,4</b></li>
+      <li><span class="muted">2.</span><span>Игрок #7</span><b>5,9</b></li>
+      <li><span class="muted">3.</span><span>dmitry</span><b>6,0</b></li>
+      <li class="me"><span>14.</span><span>Вы</span><b>7,1</b></li>
+    </ol>
+    <p class="rule">Учитываются игроки с 5 и более победами среди последних 20 игр. Пример данных.</p>
+    <button class="btn" data-act="back">Назад</button>`,
+};
+
+function plural(n) { const m10 = n % 10, m100 = n % 100; if (m10 === 1 && m100 !== 11) return "попытку"; if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return "попытки"; return "попыток"; }
+
+function render() {
+  const screen = document.getElementById("screen");
+  screen.className = "screen " + (state.screen === "game" ? "game" : "");
+  screen.replaceChildren(el(SCREENS[state.screen]()));
+}
+
+let toastTimer;
+function toast(text) {
+  const t = document.getElementById("toast"); t.textContent = text; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 1800);
+}
+
+// ---- Действия: как в боте (docs/03-screens.md) ----
+document.getElementById("app").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-act]"); if (!b) return;
+  switch (b.dataset.act) {
+    case "new": newGame(); break;
+    case "continue": state.screen = "game"; break;
+    case "slot": state.cursor = Number(b.dataset.i); break;
+    case "digit": {
+      if (state.cursor === null) { toast("Уже набрано 4 цифры. Нажмите на клетку, чтобы заменить"); return; }
+      state.input[state.cursor] = b.dataset.d;
+      state.cursor = nextEmpty(state.cursor);
+      break;
+    }
+    case "used": return;
+    case "erase": {
+      // Выбранная клетка заполнена — стираем её; пуста — ближайшую заполненную левее
+      let i = state.cursor ?? 4;
+      if (state.cursor === null || state.input[i] === null) { i--; while (i >= 0 && state.input[i] === null) i--; }
+      if (i < 0) return;
+      state.input[i] = null; state.cursor = i;
+      break;
+    }
+    case "check": {
+      if (typed().length < 4) { toast("Нужно 4 цифры"); return; }
+      const guess = state.input.join("");
+      const [bb, cc] = score(state.secret, guess);
+      state.moves.push({ g: guess, b: bb, c: cc }); state.input = EMPTY(); state.cursor = 0;
+      if (bb === 4) { state.screen = "won"; state.status = "won"; }
+      break;
+    }
+    case "abandon": state.screen = "confirm"; break;
+    case "abandon-yes": state.screen = "abandoned"; state.status = "abandoned"; break;
+    case "abandon-no": state.screen = "game"; break;
+    case "stats": state.returnTo = state.screen; state.screen = "stats"; break;
+    case "back": state.screen = state.returnTo === "stats" ? "title" : state.returnTo; break;
+    case "lang": toast("В макете — только русский. Тексты на английском — как в боте"); return;
+  }
+  render();
+  if (state.screen === "game") document.querySelector(".history li:last-child")?.scrollIntoView({ block: "nearest" });
+});
+
+// Первый экран — заглавный
+render();
+</script>
+</body>
+</html>
