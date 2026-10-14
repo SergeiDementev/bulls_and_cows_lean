@@ -1,0 +1,4 @@
+# Code runs in Linux containers while development happens on Windows
+* text=auto eol=lf
+*.png binary
+*.jpg binary
