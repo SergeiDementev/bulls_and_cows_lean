@@ -27,6 +27,7 @@ describe("module boundaries", () => {
 
   it.each([
     ["src/domain/game.ts", `import { score } from "./score.ts";`],
+    ["src/domain/game.test.ts", `import fc from "fast-check";`],
     ["src/server/app.ts", `import { score } from "../domain/score.ts";`],
     ["src/server/app.ts", `import type { GameView } from "../shared/api.ts";`],
     ["src/web/App.tsx", `import type { GameView } from "../shared/api.ts";`],
