@@ -95,18 +95,96 @@ $C exec app node scripts/bot-setup.ts
 - Mini App кнопкой меню: партия до победы, завершение, «Продолжить игру» после закрытия и открытия.
 - VoiceOver на iPhone SE; светлая и тёмная тема; «уменьшить движение» — без анимации победы.
 
+## Эксплуатация: копии, адрес, уборка (один раз, этап 5)
+
+Сначала — обновление на ветку этапа (раздел «Обновление» ниже).
+
+### 1. Осмотреться — только чтение
+
+```sh
+ls -l /home/ubuntu/.oci-cli-venv/bin/oci                              # oci — тот же, что у rpg_tele_bot
+/home/ubuntu/.oci-cli-venv/bin/oci os ns get --auth instance_principal   # неймспейс хранилища
+/home/ubuntu/.oci-cli-venv/bin/oci os object list --auth instance_principal \
+  --bucket-name bulls-and-cows-backups --namespace <неймспейс> --all --query 'data[].name'
+crontab -l
+```
+
+В бакете могут лежать копии первой версии (`bulls_and_cows_…`) — показать список.
+
+### 2. Настройки
+
+В `.env` добавить (образец — `docker/prod.env.example`):
+
+- `OCI_NAMESPACE` — из шага 1, не секрет;
+- `DUCKDNS_TOKEN` — вписывает **автор** (кабинет DuckDNS), не показывая.
+
+### 3. Первая копия — вручную
+
+```sh
+docker/backup/backup.sh
+tail -5 logs/backup.log          # «backup complete: bulls_lean_…»
+docker/backup/restore.sh         # без имени — список копий: новая в нём есть
+```
+
+### 4. Адрес DuckDNS
+
+```sh
+docker/duckdns.sh && cat logs/duckdns.log   # «address now points to …» или пусто, если IP уже верный
+```
+
+### 5. Расписание
+
+`crontab -e` пользователя `ubuntu` — **добавить** три строки, остальные (rpg_tele_bot) не трогать:
+
+```
+30 0 * * * /home/ubuntu/bulls_and_cows_lean/docker/backup/backup.sh
+*/5 * * * * /home/ubuntu/bulls_and_cows_lean/docker/duckdns.sh
+@reboot sleep 30 && /home/ubuntu/bulls_and_cows_lean/docker/duckdns.sh
+```
+
+### 6. Уборка — необратимо, каждое — с подтверждения
+
+- Копии первой версии в бакете (`bulls_and_cows_…`) — удалить.
+- `~/bulls_lean_before_0002.sql.gz` — удалить (есть свежая копия из шага 3).
+- Папка первой версии `/home/ubuntu/bulls_and_cows` — удалить.
+
+### 7. Описание бота
+
+```sh
+$C exec app node scripts/bot-setup.ts    # каждая строка — "ok":true
+```
+
+### 8. Ручная проверка автора — восстановление
+
+1. Сыграть партию, запомнить «Статистику».
+2. `docker/backup/backup.sh` — свежая копия.
+3. Сыграть ещё одну партию — после восстановления её не будет.
+4. `docker/backup/restore.sh <копия из шага 2>` — подтвердить.
+5. «Статистика» — как в шаге 1; игра работает.
+
+На следующий день: в `logs/backup.log` — ночная копия.
+
+## Копии и восстановление
+
+- **`docker/backup/backup.sh`** — копия всей базы (`pg_dump`, сжатие), проверка, что дамп полный, загрузка в Object Storage (бакет `bulls-and-cows-backups`, имена `bulls_lean_<время>.sql.gz`), сверка размера, удаление копий старше 7 дней. Вход в Oracle — правами самой ВМ, ключей на диске нет. Журнал — `logs/backup.log`; при сбое — строка `ERROR` с названием шага.
+- **`docker/backup/restore.sh`** — без аргументов список копий; `restore.sh <копия>` — скачать, проверить, спросить подтверждение (`--yes` — без вопроса), сохранить текущую базу в `logs/before-restore-…sql.gz`, остановить сервер, залить копию одной транзакцией, запустить сервер. Сбой при заливке — база остаётся прежней, сервер запускается снова. Журнал — `logs/restore.log`.
+
 ## Адрес DuckDNS
 
-IP ВМ меняется при перезапуске, автоматического обновления адреса пока нет (появится на этапе 5). После перезапуска ВМ: узнать новый IP (`curl -s ifconfig.me`) и обновить адрес в кабинете DuckDNS вручную.
+IP ВМ меняется при перезапуске. `docker/duckdns.sh` раз в 5 минут и при старте ВМ сообщает DuckDNS текущий IP; в `logs/duckdns.log` — только изменения и ошибки. Если адрес всё же не тот: `curl -s ifconfig.me` и вписать IP в кабинете DuckDNS вручную.
 
 ## Обновление
 
+Перед обновлением, которое меняет схему базы (новая миграция в `src/server/migrations/`), — копия: `docker/backup/backup.sh`.
+
 ```sh
 cd /home/ubuntu/bulls_and_cows_lean
-git fetch && git checkout <ветка или main> && git pull
+git fetch --prune && git checkout <ветка или main> && git pull
 $C up -d --build --wait
-$C ps && $C logs app --tail 30
+$C ps && $C logs app --tail 30      # «migrations applied», «Server listening»
 ```
+
+После слияния PR сервер возвращается на `main`: та же команда с `main`; если код тот же — пересборка не нужна.
 
 ## Откат
 

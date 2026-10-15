@@ -160,7 +160,7 @@ export interface SetupConfig {
   GAME_LENGTH: number;
 }
 
-/** One-time bot setup on the server: webhook, description in both languages, no command list. */
+/** One-time bot setup on the server: webhook, one description for all, no command list. */
 export async function setupBot(config: SetupConfig, fetchFn: typeof fetch = fetch) {
   const call = async (method: string, params: object) => {
     const response = await fetchFn(`https://api.telegram.org/bot${config.BOT_TOKEN}/${method}`, {
@@ -176,8 +176,6 @@ export async function setupBot(config: SetupConfig, fetchFn: typeof fetch = fetc
       ...body,
     };
   };
-  const description = (language: Language) =>
-    serverTranslations(language)("bot-description", { length: config.GAME_LENGTH });
 
   return [
     await call("setWebhook", {
@@ -187,8 +185,10 @@ export async function setupBot(config: SetupConfig, fetchFn: typeof fetch = fetc
       drop_pending_updates: true,
     }),
     // No language code: the default for everyone who is not Russian-speaking
-    await call("setMyDescription", { description: description("en") }),
-    await call("setMyDescription", { description: description("ru"), language_code: "ru" }),
+    // One description for everyone: Telegram shows it by the language of its app, so it could
+    // never follow the language chosen in the Mini App. The Russian one set before is removed
+    await call("setMyDescription", { description: serverTranslations("en")("bot-description") }),
+    await call("setMyDescription", { description: "", language_code: "ru" }),
     // The Mini App opens from the menu button; the old /start command list is not needed
     await call("deleteMyCommands", {}),
     await call("deleteMyCommands", { language_code: "ru" }),

@@ -101,5 +101,6 @@ label-cows = Cows
 ## Bot
 
 bot-button-play = Play
-# Bot description: shown in an empty chat before the Start button
-bot-description = Bulls & Cows, a logic puzzle. I think of a { $length }-digit number with no repeated digits; you crack it from the clues: 🐂 Bull — right digit, right spot; 🐄 Cow — right digit, wrong spot.
+# Bot description in an empty chat. One for both languages, the same in both files: Telegram
+# picks it by the language of its app, not of the game (author's decision)
+bot-description = 🐂🐄 Быки и коровы · Bulls & Cows

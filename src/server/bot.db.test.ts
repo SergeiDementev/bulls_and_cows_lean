@@ -142,7 +142,7 @@ describe("bot webhook without settings", () => {
 });
 
 describe("bot setup", () => {
-  it("sets the webhook, both descriptions and clears the commands, without echoing the token", async () => {
+  it("sets the webhook, one description for all and clears the commands, without echoing the token", async () => {
     const fetchFn = vi.fn<typeof fetch>(async () => new Response(JSON.stringify({ ok: true })));
     const results = await setupBot(
       { BOT_TOKEN: "123:abc", WEBAPP_URL: URL, WEBHOOK_SECRET: SECRET, GAME_LENGTH: 4 },
@@ -162,11 +162,8 @@ describe("bot setup", () => {
           drop_pending_updates: true,
         },
       ],
-      ["setMyDescription", { description: expect.stringMatching(/^Bulls & Cows.*4-digit/) }],
-      [
-        "setMyDescription",
-        { description: expect.stringMatching(/^Логическая.*из 4 разных/), language_code: "ru" },
-      ],
+      ["setMyDescription", { description: "🐂🐄 Быки и коровы · Bulls & Cows" }],
+      ["setMyDescription", { description: "", language_code: "ru" }],
       ["deleteMyCommands", {}],
       ["deleteMyCommands", { language_code: "ru" }],
       ["deleteMyCommands", { language_code: "en" }],

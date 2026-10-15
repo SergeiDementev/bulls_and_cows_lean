@@ -9,3 +9,6 @@ playwright-report/
 
 # Load test output: signed initData, k6 summary, report
 load/out/
+
+# Backup, restore and DuckDNS logs on the VM
+logs/
