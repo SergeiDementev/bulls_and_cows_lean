@@ -5,7 +5,6 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY tsconfig.json vite.config.ts ./
-COPY locales ./locales
 COPY src ./src
 # For the "Open the bot" link on a page opened outside Telegram
 ARG BOT_USERNAME=""

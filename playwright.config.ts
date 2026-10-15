@@ -2,7 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 /** The production build of the Mini App against a real server, in Chromium and WebKit (Safari). */
 export default defineConfig({
-  testDir: "e2e",
+  testDir: "tests/e2e",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,

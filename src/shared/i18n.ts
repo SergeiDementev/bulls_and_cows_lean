@@ -1,4 +1,4 @@
-/** Texts from locales/*.ftl for the Mini App and the bot. Fluent picks plural forms per language. */
+/** Texts from src/locales/*.ftl for the Mini App and the bot. Fluent picks plural forms per language. */
 import { FluentBundle, FluentNumber, FluentResource, type FluentVariable } from "@fluent/bundle";
 import { LANGUAGES, type Language } from "./api.ts";
 

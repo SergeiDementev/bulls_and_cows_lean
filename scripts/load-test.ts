@@ -1,6 +1,6 @@
 /**
  * The load test (docs/load.md): the production stack in local Docker, a database of 10 000
- * players, k6 playing as many players at once, then a report in load/out/report.md.
+ * players, k6 playing as many players at once, then a report in tests/load/out/report.md.
  *   pnpm test:load [--players 1000]
  */
 import { execFileSync, spawn } from "node:child_process";
@@ -14,7 +14,7 @@ const players = Number(process.argv[process.argv.indexOf("--players") + 1]) || 1
 // --direct: k6 talks to the server itself, past Caddy — to tell their costs apart
 const direct = process.argv.includes("--direct");
 const BOT_TOKEN = "load-test-token";
-const out = "load/out";
+const out = "tests/load/out";
 mkdirSync(out, { recursive: true });
 
 // Passwords for a throwaway stack; the file lives outside the repository and is deleted at the end

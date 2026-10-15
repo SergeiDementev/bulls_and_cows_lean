@@ -4,8 +4,8 @@ import { FluentResource } from "@fluent/bundle";
 import { describe, expect, it } from "vitest";
 import { createTranslations, keysOf } from "../src/shared/i18n.ts";
 
-const ru = readFileSync("locales/ru.ftl", "utf8");
-const en = readFileSync("locales/en.ftl", "utf8");
+const ru = readFileSync("src/locales/ru.ftl", "utf8");
+const en = readFileSync("src/locales/en.ftl", "utf8");
 
 /** Variables each message uses: { $length } → "length". */
 function variablesOf(source: string): Record<string, string[]> {
