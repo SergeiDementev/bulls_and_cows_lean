@@ -47,7 +47,7 @@ export default tseslint.config(
     languageOptions: { globals: { ...globals.browser } },
     rules: {
       ...reactHooks.configs.flat["recommended-latest"].rules,
-      // Every player-facing text comes from locales/*.ftl; only punctuation may sit in markup
+      // Every player-facing text comes from src/locales/*.ftl; only punctuation may sit in markup
       "react/jsx-no-literals": [
         "error",
         { noStrings: false, ignoreProps: true, allowedStrings: ["."] },

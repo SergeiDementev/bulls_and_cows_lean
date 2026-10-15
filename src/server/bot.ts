@@ -8,7 +8,7 @@ import { createTranslations, languageFrom, type Translate } from "../shared/i18n
 import type { Db } from "./db.ts";
 
 const read = (language: Language) =>
-  readFileSync(new URL(`../../locales/${language}.ftl`, import.meta.url), "utf8");
+  readFileSync(new URL(`../locales/${language}.ftl`, import.meta.url), "utf8");
 export const serverTranslations = createTranslations({ ru: read("ru"), en: read("en") });
 
 /** The part of a Telegram Update the bot reads. */

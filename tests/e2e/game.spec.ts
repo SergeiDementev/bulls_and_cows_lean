@@ -1,7 +1,7 @@
-import AxeBuilder from "@axe-core/playwright";
+import { AxeBuilder } from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import pg from "pg";
-import { signInitData } from "../src/server/init-data.ts";
+import { signInitData } from "../../src/server/init-data.ts";
 
 /** Plays the part of Telegram: the signed initData and the WebApp object the page expects. */
 async function openAsPlayer(page: Page, languageCode = "ru") {

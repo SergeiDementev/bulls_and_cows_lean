@@ -6,6 +6,6 @@ coverage
 reports
 test-results
 playwright-report
-e2e
+tests
 **/*.test.ts
 **/*.test.tsx
