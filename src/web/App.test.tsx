@@ -216,6 +216,22 @@ describe("Mini App", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
+  // Once a blank page until the Mini App was closed and opened again (review, 2026-10-16)
+  it.each([
+    ["internal.error", "Что-то пошло не так. Попробуйте ещё раз."],
+    ["auth.unauthorized", "Что-то пошло не так. Попробуйте ещё раз."],
+    ["rate.limited", "Игра сейчас недоступна. Попробуйте через минуту."],
+  ] as const)("shows a message and Try again when opening fails with %s", async (code, text) => {
+    const api = fakeApi();
+    api.session.mockRejectedValueOnce(new ApiError(code));
+    const { user } = open(api);
+    expect(await screen.findByText(text)).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: "Повторить" }));
+    expect(await screen.findByRole("button", { name: "Новая игра" })).toBeTruthy();
+    expect(api.session).toHaveBeenCalledTimes(2);
+  });
+
   it("asks to reopen when the sign-in data expired", async () => {
     const api = fakeApi();
     api.session.mockRejectedValueOnce(new ApiError("auth.init_data_expired"));

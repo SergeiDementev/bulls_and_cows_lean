@@ -23,6 +23,8 @@ export type View =
   | { kind: "game" }
   | { kind: "confirm" }
   | { kind: "expired" }
+  /** Opening failed with a server refusal: a message and Try again instead of a blank page. */
+  | { kind: "failed"; message: string }
   /** `back` — the title screen it was opened from, with or without a game result. */
   | { kind: "stats"; stats: StatsView; back: TitleView };
 
@@ -104,7 +106,7 @@ export function useGame(api: Api, initialLanguage: Language) {
       const input =
         game && game.id === s.game?.id ? s.input : emptyInput(game?.length ?? gameLength);
       const playing = s.view.kind === "game" || s.view.kind === "confirm";
-      let view = s.view.kind === "loading" ? title() : s.view;
+      let view = s.view.kind === "loading" || s.view.kind === "failed" ? title() : s.view;
       // The game being played was finished elsewhere: show its result
       if (playing && game?.status !== "active") view = title(game);
       return { language: player.language, playerId: player.id, game, input, view };
@@ -132,9 +134,15 @@ export function useGame(api: Api, initialLanguage: Language) {
             patch({ offline: true });
           }
         } else {
-          showToast(
-            error.code === "rate.limited" ? "error-service-unavailable" : "error-unexpected",
-          );
+          const message =
+            error.code === "rate.limited" ? "error-service-unavailable" : "error-unexpected";
+          // While opening there is nothing on screen yet: a toast alone would leave a blank page
+          if (latest.current.view.kind === "loading") {
+            retryAction.current = action;
+            patch({ view: { kind: "failed", message } });
+          } else {
+            showToast(message);
+          }
         }
       } finally {
         patch({ busy: false });

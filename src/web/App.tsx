@@ -42,6 +42,10 @@ export function App({ api, initialLanguage, reporter, onClose, onReload }: AppPr
     screen = (
       <MessageScreen text={t("session-expired")} label={t("button-close")} onClick={onClose} />
     );
+  } else if (view.kind === "failed") {
+    screen = (
+      <MessageScreen text={t(view.message)} label={t("button-retry")} onClick={actions.retry} />
+    );
   } else if (view.kind === "title") {
     screen = (
       <TitleScreen
