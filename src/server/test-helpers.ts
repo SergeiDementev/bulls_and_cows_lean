@@ -46,12 +46,15 @@ export function useServer(overrides: Partial<Record<keyof Config, string>> = {})
     telegram: {
       calls: [] as { method: string; params: Record<string, unknown> }[],
       failing: new Set<string>(),
+      /** Methods that never answer: a Telegram that hangs. */
+      hanging: new Set<string>(),
     },
   };
   let messageId = 100;
   const telegramFetch: typeof fetch = async (url, init) => {
     const method = String(url).split("/").at(-1)!;
     ctx.telegram.calls.push({ method, params: JSON.parse(String(init?.body)) });
+    if (ctx.telegram.hanging.has(method)) return new Promise<never>(() => undefined);
     const body = ctx.telegram.failing.has(method)
       ? { ok: false, description: "Bad Request: refused by the test" }
       : { ok: true, result: method === "sendMessage" ? { message_id: ++messageId } : true };
@@ -63,7 +66,7 @@ export function useServer(overrides: Partial<Record<keyof Config, string>> = {})
     await sql`truncate guesses, games, players, bot_greetings restart identity cascade`.execute(db);
     ctx.now = Date.now();
     ctx.logs = [];
-    ctx.telegram = { calls: [], failing: new Set() };
+    ctx.telegram = { calls: [], failing: new Set(), hanging: new Set() };
     messageId = 100;
     ctx.config = loadConfig({
       DATABASE_URL: inject("testDatabaseUrl"),

@@ -26,6 +26,15 @@ describe("rate limits", () => {
     for (let i = 0; i < 2; i++) expect((await call(ctx, "POST", "/api/session")).status).toBe(401);
     expect((await call(ctx, "POST", "/api/session")).status).toBe(429);
   });
+
+  it("counts forged signatures too, with no server error", async () => {
+    const forged = { authorization: `tma hash=${encodeURIComponent("é" + "a".repeat(63))}` };
+    const statuses = [];
+    for (let i = 0; i < 3; i++)
+      statuses.push((await call(ctx, "POST", "/api/session", { headers: forged })).status);
+    expect(statuses).toEqual([401, 401, 429]);
+    expect(ctx.logs.filter((l) => l.msg === "unexpected error")).toEqual([]);
+  });
 });
 
 describe("observability", () => {

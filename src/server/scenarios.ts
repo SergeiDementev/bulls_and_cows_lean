@@ -106,7 +106,11 @@ async function finishedGames(db: Db | Trx, playerId: number): Promise<FinishedGa
   }));
 }
 
-export async function openSession(db: Db, user: TelegramUser): Promise<SessionView> {
+export async function openSession(
+  db: Db,
+  user: TelegramUser,
+  gameLength: number,
+): Promise<SessionView> {
   const player = await db
     .insertInto("players")
     .values({
@@ -127,7 +131,11 @@ export async function openSession(db: Db, user: TelegramUser): Promise<SessionVi
     .orderBy("id", "desc")
     .limit(1)
     .executeTakeFirst();
-  return { player, game: game ? toGameView(game, await guessesOf(db, game.id)) : null };
+  return {
+    player,
+    game: game ? toGameView(game, await guessesOf(db, game.id)) : null,
+    gameLength,
+  };
 }
 
 export async function findPlayer(db: Db, telegramId: number): Promise<PlayerView> {

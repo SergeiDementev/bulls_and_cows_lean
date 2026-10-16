@@ -36,6 +36,11 @@ describe("verifyInitData", () => {
 
   it.each([
     ["empty string", ""],
+    // 64 characters, 65 bytes: once crashed the byte comparison (code review, 2026-10-16)
+    [
+      "a hash with a two-byte character",
+      `auth_date=1&user=%7B%22id%22%3A1%7D&hash=${encodeURIComponent("é" + "a".repeat(63))}`,
+    ],
     ["no hash", "auth_date=1&user=%7B%22id%22%3A1%7D"],
     ["short hash", `${signInitData(user, TOKEN, NOW)}`.replace(/hash=[0-9a-f]+/, "hash=abc")],
     ["another token", signInitData(user, "other", NOW)],

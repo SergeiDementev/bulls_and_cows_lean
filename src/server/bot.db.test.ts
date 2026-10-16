@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
+import { buildApp } from "./app.ts";
 import { setupBot } from "./bot.ts";
+import { createDb } from "./db.ts";
 import { call, useServer } from "./test-helpers.ts";
 
 const SECRET = "s".repeat(40);
@@ -94,6 +96,8 @@ describe("bot webhook", () => {
 
       const res = await call(ctx, "PATCH", "/api/me", { user, body: { language: "en" } });
       expect(res.status).toBe(200);
+      // The chat is updated after the answer
+      await vi.waitFor(() => expect(ctx.telegram.calls).toHaveLength(2));
       expect(ctx.telegram.calls).toEqual([
         {
           method: "editMessageText",
@@ -117,7 +121,16 @@ describe("bot webhook", () => {
     it("touches nothing in a chat without a greeting", async () => {
       await call(ctx, "POST", "/api/session", { user });
       await call(ctx, "PATCH", "/api/me", { user, body: { language: "en" } });
+      await new Promise((resolve) => setTimeout(resolve, 100));
       expect(ctx.telegram.calls).toEqual([]);
+    });
+
+    it("answers at once even when Telegram hangs", async () => {
+      await call(ctx, "POST", "/api/session", { user });
+      await hook(start(user));
+      ctx.telegram.hanging.add("editMessageText");
+      const res = await call(ctx, "PATCH", "/api/me", { user, body: { language: "en" } });
+      expect(res).toMatchObject({ status: 200, body: { player: { language: "en" } } });
     });
 
     it("still switches the language when Telegram refuses", async () => {
@@ -126,10 +139,50 @@ describe("bot webhook", () => {
       ctx.telegram.failing.add("editMessageText");
       const res = await call(ctx, "PATCH", "/api/me", { user, body: { language: "en" } });
       expect(res).toMatchObject({ status: 200, body: { player: { language: "en" } } });
-      expect(ctx.logs).toContainEqual(
-        expect.objectContaining({ msg: "telegram call failed", action: "rewrite greeting" }),
+      await vi.waitFor(() =>
+        expect(ctx.logs).toContainEqual(
+          expect.objectContaining({ msg: "telegram call failed", action: "rewrite greeting" }),
+        ),
       );
     });
+  });
+});
+
+describe("bot webhook under failures", () => {
+  const ctx = useServer({ WEBAPP_URL: URL, WEBHOOK_SECRET: SECRET });
+
+  // Otherwise Telegram resends the update again and again and holds back the next ones
+  it.each([
+    ["a body Telegram never sends", "null"],
+    ["a message without a chat", JSON.stringify({ message: { text: "/start", from: { id: 5 } } })],
+  ])("answers 200 to %s", async (_name, payload) => {
+    const res = await ctx.app.inject({
+      method: "POST",
+      url: "/telegram/webhook",
+      headers: { "content-type": "application/json", "x-telegram-bot-api-secret-token": SECRET },
+      payload,
+    });
+    expect(res.statusCode).toBe(200);
+  });
+
+  it("answers 200 and logs it when the database is down", async () => {
+    const broken = createDb("postgres://nobody:wrong@127.0.0.1:1/none", 1);
+    const logs: Record<string, unknown>[] = [];
+    const app = buildApp({
+      db: broken,
+      config: ctx.config,
+      logStream: { write: (line) => void logs.push(JSON.parse(line)) },
+    });
+    const res = await app.inject({
+      method: "POST",
+      url: "/telegram/webhook",
+      headers: { "content-type": "application/json", "x-telegram-bot-api-secret-token": SECRET },
+      payload: start({ id: 5 }),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(logs).toContainEqual(expect.objectContaining({ msg: "bot update failed" }));
+    await app.close();
+    await broken.destroy();
   });
 });
 

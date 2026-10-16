@@ -27,6 +27,7 @@ describe("server", () => {
       expect(res.body).toEqual({
         player: { id: 1, username: "anna_k", language: "ru" },
         game: null,
+        gameLength: 4,
       });
     });
 

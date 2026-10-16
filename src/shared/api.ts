@@ -32,6 +32,8 @@ export interface GameView {
 export interface SessionView {
   player: PlayerView;
   game: GameView | null;
+  /** Digits in a new game: what the rules show before the first game. */
+  gameLength: number;
 }
 
 export interface StatsView {
