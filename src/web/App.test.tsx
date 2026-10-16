@@ -25,13 +25,21 @@ const noStats: StatsView = {
   top: [],
 };
 
-function fakeApi(options: { language?: Language; game?: GameView | null; stats?: StatsView } = {}) {
+function fakeApi(
+  options: {
+    language?: Language;
+    game?: GameView | null;
+    stats?: StatsView;
+    gameLength?: number;
+  } = {},
+) {
   let game: GameView | null = options.game ?? null;
   let language: Language = options.language ?? "ru";
   const ended = (status: GameView["status"]): GameView => ({ ...game!, status, secret: SECRET });
   const api = {
     session: vi.fn(async (): Promise<SessionView> => ({
       player: { id: 1, username: null, language },
+      gameLength: options.gameLength ?? 4,
       game,
     })),
     setLanguage: vi.fn(async (next: Language) => {
@@ -217,6 +225,67 @@ describe("Mini App", () => {
       screen.getByText("Игра открыта слишком давно. Закройте её и откройте снова"),
     ).toBeTruthy();
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("takes the number length from the server before the first game", async () => {
+    open(fakeApi({ gameLength: 5 }));
+    expect(await screen.findByText(/число из 5 разных цифр/)).toBeTruthy();
+  });
+
+  /** Holds the next guess until the returned function is called. */
+  function holdNextGuess(api: ReturnType<typeof fakeApi>) {
+    let release!: () => void;
+    const original = api.guess.getMockImplementation()!;
+    api.guess.mockImplementationOnce(async (...args) => {
+      await new Promise<void>((r) => (release = r));
+      return original(...args);
+    });
+    return () => act(async () => release());
+  }
+
+  it("keeps the move pending when the player comes back to the app meanwhile", async () => {
+    const api = fakeApi();
+    const { user } = open(api);
+    await user.click(await screen.findByRole("button", { name: "Новая игра" }));
+    await type(user, "0123");
+    const release = holdNextGuess(api);
+    await user.click(screen.getByRole("button", { name: "✓ Проверить" }));
+
+    await act(async () => void document.dispatchEvent(new Event("visibilitychange")));
+    // No sync on top of a move in flight: the check button stays disabled
+    expect(api.session).toHaveBeenCalledTimes(1);
+    expect(
+      (screen.getByRole("button", { name: "✓ Проверить" }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+    await release();
+  });
+
+  it("keeps digits changed while the answer was on its way", async () => {
+    const api = fakeApi();
+    const { user } = open(api);
+    await user.click(await screen.findByRole("button", { name: "Новая игра" }));
+    await type(user, "0123");
+    const release = holdNextGuess(api);
+    await user.click(screen.getByRole("button", { name: "✓ Проверить" }));
+    await user.click(screen.getByRole("button", { name: "Стереть" }));
+    await release();
+
+    expect(await screen.findByText("Осталось возможных вариантов: 360")).toBeTruthy();
+    expect(
+      ["Клетка 1", "Клетка 2", "Клетка 3", "Клетка 4"].map(
+        (n) => screen.getByRole("button", { name: n }).textContent,
+      ),
+    ).toEqual(["0", "1", "2", ""]);
+  });
+
+  it("clears the boxes after a move when nothing was changed meanwhile", async () => {
+    const api = fakeApi();
+    const { user } = open(api);
+    await user.click(await screen.findByRole("button", { name: "Новая игра" }));
+    await type(user, "0123");
+    await user.click(screen.getByRole("button", { name: "✓ Проверить" }));
+    await screen.findByText("Осталось возможных вариантов: 360");
+    expect(screen.getByRole("button", { name: "Клетка 1" }).textContent).toBe("");
   });
 
   it("sends a move only once on a double tap", async () => {

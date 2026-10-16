@@ -48,10 +48,9 @@ export function verifyInitData(
   const fields = new URLSearchParams(initData);
   const hash = fields.get("hash") ?? "";
   const expected = hashOf(fields, botToken);
-  if (
-    hash.length !== expected.length ||
-    !timingSafeEqual(Buffer.from(hash), Buffer.from(expected))
-  ) {
+  // A real hash is 64 hex characters. Checking the shape first matters: the same length in
+  // characters is not the same length in bytes ("é" is two), and timingSafeEqual throws on that
+  if (!/^[0-9a-f]{64}$/.test(hash) || !timingSafeEqual(Buffer.from(hash), Buffer.from(expected))) {
     return { ok: false, error: "auth.unauthorized" };
   }
 

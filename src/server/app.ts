@@ -107,7 +107,8 @@ export function buildApp({ db, config, now = Date.now, logStream, telegramFetch 
   });
 
   app.addHook("onResponse", async (req, reply) => {
-    const stats = dbStats.get(req)!;
+    // Absent if Fastify answered before the hooks ran, e.g. on a malformed request
+    const stats = dbStats.get(req) ?? { queries: 0, ms: 0 };
     if (reply.elapsedTime >= config.SLOW_REQUEST_MS) {
       req.log.warn(
         {
@@ -152,13 +153,18 @@ export function buildApp({ db, config, now = Date.now, logStream, telegramFetch 
   const userOf = (req: object): TelegramUser => users.get(req)!;
   const playerOf = (req: object) => scenarios.findPlayer(db, userOf(req).id);
 
-  app.post("/api/session", (req) => scenarios.openSession(db, userOf(req)));
+  app.post("/api/session", (req) => scenarios.openSession(db, userOf(req), config.GAME_LENGTH));
 
   app.patch("/api/me", async (req) => {
     const { language } = parse(LanguageBody, req.body);
     const player = await scenarios.setLanguage(db, (await playerOf(req)).id, language);
-    // The greeting in the chat follows the Mini App language
-    if (bot) await onLanguageChanged(userOf(req).id, language, bot);
+    // The greeting in the chat follows the Mini App language, after the answer: a slow or failing
+    // Telegram must neither hold up nor fail the switch itself
+    if (bot) {
+      onLanguageChanged(userOf(req).id, language, bot).catch((error: unknown) =>
+        req.log.warn({ err: error }, "chat language update failed"),
+      );
+    }
     return { player };
   });
 
@@ -194,8 +200,13 @@ export function buildApp({ db, config, now = Date.now, logStream, telegramFetch 
       if (given.length !== expected.length || !timingSafeEqual(given, expected)) {
         throw new AppError("auth.unauthorized");
       }
-      // Always 200 once the secret checks out: Telegram would resend a failed update again and again
-      await handleUpdate(req.body as Update, bot);
+      // Always 200 once the secret checks out: Telegram would resend a failed update again and
+      // again and hold back the next ones. A failure goes to the log instead
+      try {
+        await handleUpdate(req.body as Update | null, bot);
+      } catch (error) {
+        req.log.error({ err: error }, "bot update failed");
+      }
       return reply.status(200).send();
     });
   }

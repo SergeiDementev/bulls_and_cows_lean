@@ -58,9 +58,6 @@ const OUT_OF_SYNC: readonly ErrorCode[] = [
   "player.not_found",
 ];
 
-/** Until a game exists. After that the length always comes from the game. */
-const DEFAULT_LENGTH = 4;
-
 const title = (result: GameView | null = null, celebrate = false): TitleView => ({
   kind: "title",
   result,
@@ -73,7 +70,7 @@ export function useGame(api: Api, initialLanguage: Language) {
     language: initialLanguage,
     playerId: null,
     game: null,
-    input: emptyInput(DEFAULT_LENGTH),
+    input: emptyInput(0),
     busy: true,
     offline: false,
     toast: null,
@@ -101,11 +98,11 @@ export function useGame(api: Api, initialLanguage: Language) {
 
   /** Player and latest game from the server: on opening, on return, after a 409. */
   const sync = useCallback(async () => {
-    const { player, game } = await api.session();
+    const { player, game, gameLength } = await api.session();
     patch((s) => {
       // The same game keeps its typed digits; another one starts empty
       const input =
-        game && game.id === s.game?.id ? s.input : emptyInput(game?.length ?? DEFAULT_LENGTH);
+        game && game.id === s.game?.id ? s.input : emptyInput(game?.length ?? gameLength);
       const playing = s.view.kind === "game" || s.view.kind === "confirm";
       let view = s.view.kind === "loading" ? title() : s.view;
       // The game being played was finished elsewhere: show its result
@@ -163,9 +160,10 @@ export function useGame(api: Api, initialLanguage: Language) {
   // Back in the Mini App: the game may have moved on in another window or device
   useEffect(() => {
     const onVisible = () => {
-      const { view } = latest.current;
+      const { view, busy } = latest.current;
       if (
         document.visibilityState === "visible" &&
+        !busy &&
         view.kind !== "loading" &&
         view.kind !== "expired"
       )
@@ -212,12 +210,12 @@ export function useGame(api: Api, initialLanguage: Language) {
       }
       run(async () => {
         const next = await api.guess(game.id, guess, game.attempts.length + 1);
-        const input = emptyInput(next.length);
         // A move ends a game only by winning
-        patch(
+        patch((s) =>
           next.status === "active"
-            ? { game: next, input }
-            : { game: next, input, view: title(next, true) },
+            ? // Only the guess that was sent is cleared; digits changed meanwhile stay
+              { game: next, input: s.input === input ? emptyInput(next.length) : s.input }
+            : { game: next, input: emptyInput(next.length), view: title(next, true) },
         );
       });
     },

@@ -29,11 +29,12 @@
 ```json
 {
   "player": { "id": 12, "username": "anna_k", "language": "ru" },
-  "game": null
+  "game": null,
+  "gameLength": 4
 }
 ```
 
-`game` — последняя партия (`GameView`) или `null`, если партий не было.
+`game` — последняя партия (`GameView`) или `null`, если партий не было. `gameLength` — сколько цифр в новой партии: Mini App показывает его в правилах до первой игры, своей константы у неё нет.
 
 ### `PATCH /api/me`
 

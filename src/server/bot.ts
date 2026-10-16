@@ -85,9 +85,10 @@ async function quietly(deps: BotDeps, action: string, call: () => Promise<unknow
 }
 
 /** /start: a new greeting in the player's language; the previous one is removed. */
-export async function handleUpdate(update: Update, deps: BotDeps): Promise<void> {
-  const message = update.message;
-  if (!message?.text?.startsWith("/start") || !message.from) return;
+export async function handleUpdate(update: Update | null, deps: BotDeps): Promise<void> {
+  // The body is not checked by a schema: anything without what /start needs is ignored
+  const message = update?.message;
+  if (!message?.text?.startsWith("/start") || !message.from || !message.chat) return;
   const telegramId = String(message.from.id);
   const chatId = message.chat.id;
 
@@ -162,19 +163,16 @@ export interface SetupConfig {
 
 /** One-time bot setup on the server: webhook, one description for all, no command list. */
 export async function setupBot(config: SetupConfig, fetchFn: typeof fetch = fetch) {
+  const telegram = createTelegram(config.BOT_TOKEN, fetchFn);
+  // Every step is reported, a refusal included, so the person running it sees what went wrong
   const call = async (method: string, params: object) => {
-    const response = await fetchFn(`https://api.telegram.org/bot${config.BOT_TOKEN}/${method}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(params),
-    });
-    const body = (await response.json()) as { ok: boolean; description?: string };
-    // Report the method name only: the URL contains the token
-    return {
-      method,
-      ...("language_code" in params && { language: params.language_code }),
-      ...body,
-    };
+    const language = "language_code" in params ? { language: params.language_code } : {};
+    try {
+      await telegram(method, params);
+      return { method, ...language, ok: true };
+    } catch (error) {
+      return { method, ...language, ok: false, description: (error as Error).message };
+    }
   };
 
   return [
