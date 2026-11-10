@@ -9,12 +9,17 @@ on:
     branches: [main]
     paths-ignore: ["**/*.md"]
 
+# Read-only token: a public repo must not let a workflow write to it
+permissions:
+  contents: read
+
 env:
   DATABASE_URL: postgres://bulls:ci-only-password@127.0.0.1:5432/bulls
 
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
       # Not a service container: those cannot retry or switch registry when a pull is refused
@@ -33,7 +38,9 @@ jobs:
 
   # The production Mini App against a real server, in Chromium and WebKit
   e2e:
+    # A stalled package mirror once hung the browser install; fail fast instead of the 6 h default
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
       - run: scripts/ci-postgres.sh
