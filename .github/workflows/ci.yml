@@ -9,6 +9,10 @@ on:
     branches: [main]
     paths-ignore: ["**/*.md"]
 
+# Read-only token: a public repo must not let a workflow write to it
+permissions:
+  contents: read
+
 env:
   DATABASE_URL: postgres://bulls:ci-only-password@127.0.0.1:5432/bulls
 
