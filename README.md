@@ -102,3 +102,5 @@ pnpm dev:web              # Mini App в браузере, вход подпис�
 ## Документы
 
 [Требования](docs/requirements.md) · [Правила](docs/rules.md) · [API и данные](docs/api.md) · [Журнал решений и итоги этапов](docs/decisions.md) · [Нагрузочный замер](docs/load.md) · [Деплой](docs/deploy.md)
+
+Лицензия — [MIT](LICENSE).

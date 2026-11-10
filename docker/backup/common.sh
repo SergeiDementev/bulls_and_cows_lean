@@ -16,7 +16,7 @@ KEEP_DAYS=7
 env_value() { grep -E "^$1=" "$ENV_FILE" | cut -d= -f2- || true; }
 
 STORAGE="${BACKUP_STORAGE:-oci}"
-OCI_BIN="${OCI_BIN:-/home/ubuntu/.oci-cli-venv/bin/oci}"
+OCI_BIN="${OCI_BIN:-$HOME/.oci-cli-venv/bin/oci}"
 OCI_BUCKET="${OCI_BUCKET:-bulls-and-cows-backups}"
 OCI_NAMESPACE="${OCI_NAMESPACE:-$(env_value OCI_NAMESPACE)}"
 DB="$(env_value POSTGRES_DB)"

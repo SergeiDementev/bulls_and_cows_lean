@@ -1,20 +1,20 @@
 # Деплой на ВМ
 
-Для сессии Claude Code на ВМ Oracle Cloud и для автора, который подтверждает каждое изменяющее действие. Устройство — [decisions.md](decisions.md), «Устройство».
+Для сессии Claude Code на ВМ и для автора, который подтверждает каждое изменяющее действие. Устройство — [decisions.md](decisions.md), «Устройство».
 
 ## Правила для агента на сервере
 
 - **Изменяющее действие — только после подтверждения автора.** Посмотреть, вывести состояние — без подтверждения.
-- **rpg_tele_bot не трогать:** его папку, контейнеры, тома, cron и бакет — только смотреть. Никаких `docker system prune`, `docker volume prune` и остановок «всех контейнеров».
+- **Чужие проекты на ВМ не трогать:** их папки, контейнеры, тома, cron и бакеты — только смотреть. Никаких `docker system prune`, `docker volume prune` и остановок «всех контейнеров».
 - **Секреты не выводить:** `.env`, токен бота, пароли. Проверять — наличием и длиной значения.
 - После каждого запуска — состояние, логи, проверка здоровья: «контейнер запущен» ≠ «приложение работает».
 - Шаг не удался — остановиться, показать вывод, предложить причину. Не обходить.
 
-`$C` ниже — `docker compose -f docker/compose.prod.yml --env-file .env`, из папки `/home/ubuntu/bulls_and_cows_lean`.
+`$C` ниже — `docker compose -f docker/compose.prod.yml --env-file .env`, из папки `~/bulls_and_cows_lean`.
 
 ## Переключение с первой версии (один раз, этап 3)
 
-Первая версия: папка `/home/ubuntu/bulls_and_cows`, Compose-проект `bulls-and-cows`. Её данные не переносятся.
+Первая версия: папка `~/bulls_and_cows`, Compose-проект `bulls-and-cows`. Её данные не переносятся.
 
 ### 1. Осмотреться — только чтение
 
@@ -33,8 +33,8 @@ getent hosts bulls-and-cows-telebot.duckdns.org && curl -s ifconfig.me; echo
 Автор добавляет ключ развёртывания (Deploy key, только чтение) в GitHub → репозиторий `bulls_and_cows_lean` → Settings → Deploy keys. Затем:
 
 ```sh
-git clone git@github.com:SergeiDementev/bulls_and_cows_lean.git /home/ubuntu/bulls_and_cows_lean
-cd /home/ubuntu/bulls_and_cows_lean && git checkout stage-3-webapp
+git clone git@github.com:SergeiDementev/bulls_and_cows_lean.git ~/bulls_and_cows_lean
+cd ~/bulls_and_cows_lean && git checkout stage-3-webapp
 ```
 
 ### 3. Настройки
@@ -44,7 +44,7 @@ cp docker/prod.env.example .env && chmod 600 .env
 ```
 
 - `POSTGRES_PASSWORD`, `APP_DB_PASSWORD`, `WEBHOOK_SECRET` — `openssl rand -hex 24`, вписать не показывая.
-- `BOT_TOKEN` и `BOT_USERNAME` — перенести из `/home/ubuntu/bulls_and_cows/.env`, не показывая значений.
+- `BOT_TOKEN` и `BOT_USERNAME` — перенести из `~/bulls_and_cows/.env`, не показывая значений.
 - Проверка: каждая переменная из `prod.env.example` задана — имена и длины значений.
 
 ### 4. Собрать образы — первая версия ещё работает
@@ -58,16 +58,16 @@ $C build
 **С этого шага бот первой версии перестаёт отвечать, её данные удаляются.**
 
 ```sh
-cd /home/ubuntu/bulls_and_cows
+cd ~/bulls_and_cows
 docker compose -f docker/docker-compose.prod.yml --env-file .env down -v --rmi local
 ```
 
-Убрать из `crontab` строку копий первой версии; остальные строки не трогать. Папку `/home/ubuntu/bulls_and_cows` оставить до этапа 5.
+Убрать из `crontab` строку копий первой версии; остальные строки не трогать. Папку `~/bulls_and_cows` оставить до этапа 5.
 
 ### 6. Запустить новую версию
 
 ```sh
-cd /home/ubuntu/bulls_and_cows_lean
+cd ~/bulls_and_cows_lean
 $C up -d --wait
 $C ps
 $C logs app --tail 30      # «migrations applied», «Server listening»
@@ -102,9 +102,9 @@ $C exec app node scripts/bot-setup.ts
 ### 1. Осмотреться — только чтение
 
 ```sh
-ls -l /home/ubuntu/.oci-cli-venv/bin/oci                              # oci — тот же, что у rpg_tele_bot
-/home/ubuntu/.oci-cli-venv/bin/oci os ns get --auth instance_principal   # неймспейс хранилища
-/home/ubuntu/.oci-cli-venv/bin/oci os object list --auth instance_principal \
+ls -l ~/.oci-cli-venv/bin/oci                              # oci — уже установлен на ВМ
+~/.oci-cli-venv/bin/oci os ns get --auth instance_principal   # неймспейс хранилища
+~/.oci-cli-venv/bin/oci os object list --auth instance_principal \
   --bucket-name bulls-and-cows-backups --namespace <неймспейс> --all --query 'data[].name'
 crontab -l
 ```
@@ -134,19 +134,19 @@ docker/duckdns.sh && cat logs/duckdns.log   # «address now points to …» ил
 
 ### 5. Расписание
 
-`crontab -e` пользователя `ubuntu` — **добавить** три строки, остальные (rpg_tele_bot) не трогать:
+`crontab -e` владельца папки проекта — **добавить** три строки, остальные не трогать:
 
 ```
-30 0 * * * /home/ubuntu/bulls_and_cows_lean/docker/backup/backup.sh
-*/5 * * * * /home/ubuntu/bulls_and_cows_lean/docker/duckdns.sh
-@reboot sleep 30 && /home/ubuntu/bulls_and_cows_lean/docker/duckdns.sh
+30 0 * * * $HOME/bulls_and_cows_lean/docker/backup/backup.sh
+*/5 * * * * $HOME/bulls_and_cows_lean/docker/duckdns.sh
+@reboot sleep 30 && $HOME/bulls_and_cows_lean/docker/duckdns.sh
 ```
 
 ### 6. Уборка — необратимо, каждое — с подтверждения
 
 - Копии первой версии в бакете (`bulls_and_cows_…`) — удалить.
 - `~/bulls_lean_before_0002.sql.gz` — удалить (есть свежая копия из шага 3).
-- Папка первой версии `/home/ubuntu/bulls_and_cows` — удалить.
+- Папка первой версии `~/bulls_and_cows` — удалить.
 
 ### 7. Описание бота
 
@@ -178,7 +178,7 @@ IP ВМ меняется при перезапуске. `docker/duckdns.sh` ра
 Перед обновлением, которое меняет схему базы (новая миграция в `src/server/migrations/`), — копия: `docker/backup/backup.sh`.
 
 ```sh
-cd /home/ubuntu/bulls_and_cows_lean
+cd ~/bulls_and_cows_lean
 git fetch --prune && git checkout <ветка или main> && git pull
 $C up -d --build --wait
 $C ps && $C logs app --tail 30      # «migrations applied», «Server listening»
